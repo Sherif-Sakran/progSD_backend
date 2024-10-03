@@ -1,4 +1,4 @@
-name: C:\Users\Sherif\miniconda3\envs\dj_env
+name: dj_env
 channels:
   - defaults
 dependencies:
