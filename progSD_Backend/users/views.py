@@ -14,6 +14,21 @@ def login_view(request):
 
 def fetch_data_vehicles(request):
     with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM vehicles")
+        cursor.execute('SELECT * FROM "Vehicles"')
         rows = cursor.fetchall()
     return JsonResponse({'data': rows})
+
+def list_tables(request):
+    # Query to get all table names from the 'public' schema
+    query = """
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public';
+    """
+    
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        tables = cursor.fetchall()
+    
+    # Return the list of tables as a JSON response
+    return JsonResponse({'tables': [table[0] for table in tables]})
