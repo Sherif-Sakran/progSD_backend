@@ -2,16 +2,75 @@ from django.shortcuts import render
 from django.http import HttpResponse
 from django.db import connection
 from django.http import JsonResponse
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import make_password
+from django.views.decorators.csrf import csrf_exempt
 
 
+@csrf_exempt
+def test_api(request):
+    if request.method == 'POST':
+        # Get data from the request
+        data = request.POST.get('data')
 
-# Create your views here.
+        # Return the received data in a JSON response
+        return JsonResponse({'message': 'Data received', 'data': data}, status=200)
+    else:
+            return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
 def register_view(request):
-    return HttpResponse('Registration is here')
+    if request.method == 'POST':
+        # Get data from the request
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        email = request.POST.get('email', '')
 
+        # Validate input (you can add more validations if necessary)
+        if not username or not password:
+            return JsonResponse({'message': 'Username and password are required'}, status=400)
+
+        # Check if the username already exists
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'message': 'Username already taken'}, status=400)
+
+        # Create the user
+        user = User.objects.create(
+            username=username,
+            email=email,
+            password=make_password(password)  # This ensures the password is hashed
+        )
+
+        # Return a success response
+        return JsonResponse({'message': 'User registered successfully'}, status=201)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    # return HttpResponse('Registration is here')
+
+
+@csrf_exempt
 def login_view(request):
-    return HttpResponse('Login')
+    if request.method == 'POST':
+        # Get data from the request
+        username = request.POST.get('username')
+        password = request.POST.get('password')
 
+        # Authenticate the user
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            # Log the user in
+            login(request, user)
+            return JsonResponse({'message': 'Login successful'}, status=200)
+        else:
+            # Invalid credentials
+            return JsonResponse({'message': 'Invalid username or password'}, status=400)
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    # return HttpResponse('Login is here')
+    
 def fetch_data_vehicles(request):
     with connection.cursor() as cursor:
         cursor.execute('SELECT * FROM "Vehicles"')
