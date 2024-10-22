@@ -74,12 +74,24 @@ WSGI_APPLICATION = 'progSD_Backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.jcpcrfgdwfqyhavjekym',
+        'PASSWORD': 'weliveonthedarkside',
+        'HOST': 'aws-0-us-east-1.pooler.supabase.com',  # e.g., 'db.supabase.co'
+        'PORT': '6543',  # default Postgres port
     }
 }
+# user=postgres.jcpcrfgdwfqyhavjekym password=[YOUR-PASSWORD] host=aws-0-us-east-1.pooler.supabase.com port=6543 dbname=postgres
 
 
 # Password validation
