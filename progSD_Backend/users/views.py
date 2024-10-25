@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render
 from django.http import HttpResponse
 from django.db import connection
@@ -15,7 +16,11 @@ from . import models
 def test_api(request):
     if request.method == 'POST':
         # Get data from the request
-        data = request.POST.get('data')
+        try:
+            # Parse JSON data from the request body
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
 
         # Return the received data in a JSON response
         return JsonResponse({'message': 'Data received', 'data': data}, status=200)
@@ -26,10 +31,16 @@ def test_api(request):
 @csrf_exempt
 def register_view(request):
     if request.method == 'POST':
-        # Get data from the request
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        email = request.POST.get('email', '')
+        try:
+            # Parse JSON data from the request body
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
+        
+        # Get data from the parsed JSON
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email', '')
 
         # Validate input (you can add more validations if necessary)
         if not username or not password:
