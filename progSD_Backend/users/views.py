@@ -53,7 +53,7 @@ def register_view(request):
         if User.objects.filter(username=username).exists():
             return JsonResponse({'message': 'Username already taken'}, status=400)
 
-        user = User.objects.create_user(username=username, email=email, password=password, user_type=role)
+        user = User.objects.create_user(username=username, email=email, password=password, role=role)
 
         # Assign permissions based on role
         if role == 'customer':
@@ -90,7 +90,7 @@ def login_view(request):
             # Log the user in
             login(request, user)
 
-            role = user.user_type
+            role = user.role
             permissions = user.get_all_permissions()
 
             return JsonResponse({
