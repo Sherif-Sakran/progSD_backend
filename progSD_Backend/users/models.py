@@ -9,7 +9,21 @@ class CustomUser(AbstractUser):
         ('manager', 'Manager'),
     )
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
-
+    
+    class Meta:
+            permissions = [
+                ("rent_vehicle", "Can rent vehicle"),
+                ("return_vehicle", "Can return vehicle"),
+                ("report_defective_vehicle", "Can report defective vehicle"),
+                ("pay_charges", "Can pay charges"),
+                ("track_vehicle", "Can track vehicle"),
+                ("charge_vehicle", "Can charge vehicle"),
+                ("repair_vehicle", "Can repair vehicle"),
+                ("move_vehicle", "Can move vehicle"),
+                ("generate_reports", "Can generate reports"),
+            ]
+    
+    
     def __str__(self):
         return self.usernam
 
