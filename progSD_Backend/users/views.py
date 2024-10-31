@@ -283,4 +283,5 @@ def rent_vehicle(request):
         }
         selected_vehicle.status = 'Rented'
         selected_vehicle.save()
+        # a row to be added to the rentals table
         return JsonResponse({'Vehicle rented successfully': selected_vehicle_json})
