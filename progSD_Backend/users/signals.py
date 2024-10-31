@@ -5,18 +5,18 @@ from .models import CustomUser, CustomerProfile, OperatorProfile, ManagerProfile
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        if instance.user_type == 'customer':
+        if instance.role == 'customer':
             CustomerProfile.objects.create(user=instance)
-        elif instance.user_type == 'operator':
+        elif instance.role == 'operator':
             OperatorProfile.objects.create(user=instance)
-        elif instance.user_type == 'manager':
+        elif instance.role == 'manager':
             ManagerProfile.objects.create(user=instance)
 
 @receiver(post_save, sender=CustomUser)
 def save_user_profile(sender, instance, **kwargs):
-    if instance.user_type == 'customer':
+    if instance.role == 'customer':
         instance.customerprofile.save()
-    elif instance.user_type == 'operator':
+    elif instance.role == 'operator':
         instance.operatorprofile.save()
-    elif instance.user_type == 'manager':
+    elif instance.role == 'manager':
         instance.managerprofile.save()
