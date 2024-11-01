@@ -236,12 +236,20 @@ def rent_vehicle(request):
         return JsonResponse({'Vehicle rented successfully': selected_vehicle_json, 'Rental': rental_record_json})
 
 
-def calculate_total_cost(distance_km, duration_hours):
+def calculate_total_cost(distance_km, duration_hours, vehicle_type):
     distance_rate = 1.5
     time_rate = 2.0
+    
+    factor = {
+        'Electric Car': 1.5,     
+        'Electric Scooter': 0.8, 
+        'Electric Bike': 0.5     
+    }
 
-    total_cost = (distance_km * distance_rate) + (duration_hours * time_rate)
+    total_cost = ((distance_km * distance_rate) + (duration_hours * time_rate)) * factor[vehicle_type]
+    print(total_cost)
     return total_cost
+
 
 @csrf_exempt
 def return_vehicle(request):
@@ -285,7 +293,7 @@ def return_vehicle(request):
         duration_hours = duration.total_seconds() / 3600  # Convert duration to hours
 
         # Calculate total cost
-        total_cost = calculate_total_cost(distance_km, duration_hours)
+        total_cost = calculate_total_cost(distance_km, duration_hours, selected_vehicle.type)
 
         # Update rental record
         rental_record.end_time = timezone.now()
