@@ -52,7 +52,7 @@ def add_location(request):
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
         
 
-    location = models.Location(
+    location = models.StationLocation(
         name=location_json["name"],
         address=location_json["address"],
         latitude=location_json["latitude"],
@@ -61,7 +61,7 @@ def add_location(request):
         number_of_available_vehicles=location_json["number_of_available_vehicles"]
     )
     location.save()
-    return JsonResponse({'message': 'Location added successfully'}, status=200)
+    return JsonResponse({'message': 'Location added successfully', 'Station': location_json}, status=200)
 
 
 # vehicle insertion example
@@ -85,14 +85,14 @@ def add_vehicle(request):
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
         try:
             # Get the related location instance
-            location = models.Location.objects.get(id=vehicle_json["location_id"])
+            station_location = models.StationLocation.objects.get(id=vehicle_json["location_id"])
             
             # Create and save the vehicle object
             vehicle = models.Vehicle(
                 type=vehicle_json["type"],
                 battery_level=vehicle_json["battery_level"],
                 status=vehicle_json["status"],
-                location=location,
+                station_id=station_location,
                 last_maintenance_date=parse_date(vehicle_json["last_maintenance_date"]),
                 is_defective=vehicle_json["is_defective"]
             )
