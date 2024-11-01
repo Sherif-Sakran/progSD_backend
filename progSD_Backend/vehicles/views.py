@@ -315,7 +315,7 @@ def return_vehicle(request):
         request.user.customerprofile.save()
         return JsonResponse({'message': 'Vehicle returned successfully', 'rental_record': rental_record_json})
 
-
+@csrf_exempt
 def report_defective_vehicle(request):
     if not request.user.has_perm('users.report_defective_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -365,8 +365,7 @@ def report_defective_vehicle(request):
 
         return JsonResponse({'message': 'Vehicle reported as defective successfully', 'defect_report': defect_report_json})
     
-
-
+@csrf_exempt
 def confirm_defective_vehicle(request):
     if not request.user.has_perm('users.repair_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -386,16 +385,19 @@ def confirm_defective_vehicle(request):
             return JsonResponse({'message': 'Defect report not found'}, status=404)
 
         selected_vehicle.status = 'Defective'
+        selected_vehicle.is_defective=True
 
         defect_report.found_defective = vehicle_found_defective
         defect_report.confirmed_date = timezone.now()
         
         selected_vehicle.save()
         defect_report.save()
+        return JsonResponse({'message': 'Report confirmed successfully'})
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
 
 
+@csrf_exempt
 def repair_vehicle(request):
     # Check for repair_vehicle permission
     if not request.user.has_perm('users.repair_vehicle'):
