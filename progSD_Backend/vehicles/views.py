@@ -312,3 +312,105 @@ def return_vehicle(request):
         rental_record.save()
         request.user.customerprofile.save()
         return JsonResponse({'message': 'Vehicle returned successfully', 'rental_record': rental_record_json})
+
+
+from datetime import timedelta
+
+def report_defective_vehicle(request):
+    if not request.user.has_perm('users.report_defective_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data["vehicle_id"]
+            description = data.get("description", "")
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+        try:
+            selected_vehicle = models.Vehicle.objects.get(id=vehicle_id)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+
+        active_rental = models.Rental.objects.filter(
+            vehicle=selected_vehicle,
+            customer=request.user,
+            is_active=True
+        ).first()
+
+        recent_rental = models.Rental.objects.filter(
+            vehicle=selected_vehicle,
+            customer=request.user,
+            start_time__gte=timezone.now() - timedelta(hours=24)
+        ).first()
+
+        if not active_rental and not recent_rental:
+            return JsonResponse({'message': 'You can only report vehicles you are renting or rented in the last 24 hours'}, status=403)
+
+        defect_report = models.CustomerReportedDefects.objects.create(
+            vehicle=selected_vehicle,
+            reported_by=request.user,
+            report_date=timezone.now(),
+            description=description
+        )
+
+        defect_report_json = {
+            "id": defect_report.id,
+            "vehicle": selected_vehicle.id,
+            "reported_by": request.user.id,
+            "report_date": defect_report.report_date.isoformat(),
+            "description": defect_report.description
+        }
+
+        return JsonResponse({'message': 'Vehicle reported as defective successfully', 'defect_report': defect_report_json})
+    
+
+
+def confirm_defective_vehicle(request):
+    if not request.user.has_perm('users.repair_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            defect_id = data.get("defect_id")
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid request data'}, status=400)
+
+        try:
+            defect_report = models.CustomerReportedDefects.objects.get(id=defect_id)
+            selected_vehicle = defect_report.vehicle
+        except models.CustomerReportedDefects.DoesNotExist:
+            return JsonResponse({'message': 'Defect report not found'}, status=404)
+
+        selected_vehicle.status = 'Defective'
+        selected_vehicle.save()
+
+        # Call confirm_defect() to set confirmed_date securely
+        defect_report.confirm_defect()
+
+        repair_log_entry = models.RepairsLog.objects.create(
+            defect=defect_report,
+            operator=request.user,
+            repair_date=timezone.now(),
+            action_taken='ReportReceived',
+            notes="Vehicle marked as defective based on customer report"
+        )
+
+        repair_log_json = {
+            "id": repair_log_entry.id,
+            "defect": repair_log_entry.defect.id,
+            "operator": repair_log_entry.operator.id,
+            "repair_date": repair_log_entry.repair_date.isoformat(),
+            "action_taken": repair_log_entry.action_taken,
+            "notes": repair_log_entry.notes
+        }
+
+        return JsonResponse({
+            'message': 'Vehicle confirmed as defective',
+            'Vehicle': {'id': selected_vehicle.id, 'status': selected_vehicle.status},
+            'Repair Log': repair_log_json
+        })
+
+    return JsonResponse({'message': 'Invalid request method'}, status=405)

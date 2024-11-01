@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -89,25 +90,47 @@ class Payment(models.Model):
 
 
 
-class MaintenanceLog(models.Model):
-    ACTION_TAKEN_CHOICES = [
+# class MaintenanceLog(models.Model):
+#     ACTION_TAKEN_CHOICES = [
+#         ('Charged', 'Charged'),
+#         ('Repaired', 'Repaired'),
+#         ('Relocated', 'Relocated'),
+#         ('ReportReceived', 'ReportReceived'),
+#     ]
+
+#     id = models.AutoField(primary_key=True)
+#     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
+#     reported_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+#     operator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='operator_maintenance_logs', null=True)
+#     maintenance_date = models.DateField()
+#     description = models.TextField()
+#     action_taken = models.CharField(max_length=20, choices=ACTION_TAKEN_CHOICES)
+
+#     def __str__(self):
+#         return f'Maintenance Log for {self.vehicle}'
+
+
+class CustomerReportedDefects(models.Model):
+    id = models.AutoField(primary_key=True)
+    vehicle = models.ForeignKey('Vehicle', on_delete=models.CASCADE)
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    report_date = models.DateTimeField(default=timezone.now)
+    description = models.TextField()
+    
+    found_defective = models.BooleanField(default=False)
+    confirmed_date = models.DateTimeField(null=True, blank=True)
+
+class RepairsLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    defect = models.ForeignKey(CustomerReportedDefects, on_delete=models.CASCADE)
+    operator = models.ForeignKey(User, on_delete=models.CASCADE)
+    repair_date = models.DateTimeField(default=timezone.now)
+    action_taken = models.CharField(max_length=20, choices=[
         ('Charged', 'Charged'),
         ('Repaired', 'Repaired'),
         ('Relocated', 'Relocated'),
-        ('ReportReceived', 'ReportReceived'),
-    ]
-
-    id = models.AutoField(primary_key=True)
-    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    reported_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-    operator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='operator_maintenance_logs', null=True)
-    maintenance_date = models.DateField()
-    description = models.TextField()
-    action_taken = models.CharField(max_length=20, choices=ACTION_TAKEN_CHOICES)
-
-    def __str__(self):
-        return f'Maintenance Log for {self.vehicle}'
-
+    ])
+    notes = models.TextField(blank=True, null=True)
 
 
 class Report(models.Model):
