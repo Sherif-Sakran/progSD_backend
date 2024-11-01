@@ -5,6 +5,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.dateparse import parse_date
 import json
 from . import models
+from django.utils import timezone
+from geopy.distance import geodesic
+
 
 
 def fetch_data_vehicles(request):
@@ -98,7 +101,7 @@ def add_vehicle(request):
             )
             vehicle.save()
             print("Vehicle created and saved to database.")
-            return JsonResponse({'message': 'Vehicle added successfully'}, status=200)
+            return JsonResponse({'message': 'Vehicle added successfully', 'vehicle': vehicle_json}, status=200)
         except models.Location.DoesNotExist:
             return JsonResponse({'message': 'Station location with the given ID does not exist.'}, status=400)
 
@@ -168,7 +171,10 @@ def list_available_vehicles_at(request):
     # choose a car (list of available car provided)
 @csrf_exempt
 def rent_vehicle(request):
-    # takes of the car and make its status as rented
+    if not request.user.has_perm('users.rent_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+
     if request.method == 'POST':
         try:
             vehicle_id_JSON = json.loads(request.body)
@@ -183,11 +189,107 @@ def rent_vehicle(request):
             "type": selected_vehicle.type,
             "battery_level": selected_vehicle.battery_level,
             "status": selected_vehicle.status,
-            "location_id": selected_vehicle.location.id if selected_vehicle.location else None,
+            "station_location": selected_vehicle.station_id.id if selected_vehicle.station_id else None,
             "last_maintenance_date": selected_vehicle.last_maintenance_date.isoformat(),
             "is_defective": selected_vehicle.is_defective,
         }
         selected_vehicle.status = 'Rented'
         selected_vehicle.save()
-        # a row to be added to the rentals table
-        return JsonResponse({'Vehicle rented successfully': selected_vehicle_json})
+        
+        rental_record = models.Rental.objects.create(
+            customer=request.user,
+            vehicle=selected_vehicle,
+            start_time=timezone.now(),
+            start_location=selected_vehicle.station_id,
+            is_active=True
+        )
+
+        rental_record_json = {
+            "id": rental_record.id,
+            "customer": rental_record.customer.id,
+            "vehicle": selected_vehicle_json,
+            "start_time": rental_record.start_time.isoformat(),
+            "start_location": rental_record.start_location.id if rental_record.start_location else None,
+            "is_active": rental_record.is_active
+        }
+
+
+        
+        rental_record.save()
+        return JsonResponse({'Vehicle rented successfully': selected_vehicle_json, 'Rental': rental_record_json})
+
+
+def calculate_total_cost(distance_km, duration_hours):
+    distance_rate = 1.5
+    time_rate = 2.0
+
+    total_cost = (distance_km * distance_rate) + (duration_hours * time_rate)
+    return total_cost
+
+@csrf_exempt
+def return_vehicle(request):
+    if not request.user.has_perm('users.return_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data["vehicle_id"]
+            end_location_id = data["end_location_id"]
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+        try:
+            selected_vehicle = models.Vehicle.objects.get(id=vehicle_id)
+            rental_record = models.Rental.objects.get(vehicle=selected_vehicle, customer=request.user, is_active=True)
+            end_location = models.StationLocation.objects.get(id=end_location_id)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+        except models.Rental.DoesNotExist:
+            return JsonResponse({'message': 'Active rental record not found for this vehicle and user'}, status=404)
+        except models.StationLocation.DoesNotExist:
+            return JsonResponse({'message': 'End location not found'}, status=404)
+
+        # Update vehicle details
+        selected_vehicle.station_id = end_location
+        selected_vehicle.status = 'Available'
+        selected_vehicle.battery_level = max(selected_vehicle.battery_level - 10, 0)
+        selected_vehicle.save()
+
+        # Calculate distance and time
+        start_location = rental_record.start_location
+        if start_location and end_location:
+            start_coords = (start_location.latitude, start_location.longitude)
+            end_coords = (end_location.latitude, end_location.longitude)
+            distance_km = geodesic(start_coords, end_coords).km
+        else:
+            distance_km = 0
+
+        duration = timezone.now() - rental_record.start_time
+        duration_hours = duration.total_seconds() / 3600  # Convert duration to hours
+
+        # Calculate total cost
+        total_cost = calculate_total_cost(distance_km, duration_hours)
+
+        # Update rental record
+        rental_record.end_time = timezone.now()
+        rental_record.end_location = end_location
+        rental_record.total_cost = total_cost
+        rental_record.is_active = False
+        rental_record.save()
+
+        rental_record_json = {
+            "id": rental_record.id,
+            "customer": rental_record.customer.id,
+            "vehicle id": selected_vehicle.id,
+            "start_time": rental_record.start_time.isoformat(),
+            "end_time": rental_record.end_time.isoformat(),
+            "start_location": start_location.id if start_location else None,
+            "end_location": end_location.id,
+            "distance_km": distance_km,
+            "duration_hours": duration_hours,
+            "total_cost": total_cost,
+            "is_active": rental_record.is_active
+        }
+
+        return JsonResponse({'message': 'Vehicle returned successfully', 'rental_record': rental_record_json})
