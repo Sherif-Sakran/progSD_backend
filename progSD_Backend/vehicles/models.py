@@ -125,12 +125,8 @@ class RepairsLog(models.Model):
     defect = models.ForeignKey(CustomerReportedDefects, on_delete=models.CASCADE)
     operator = models.ForeignKey(User, on_delete=models.CASCADE)
     repair_date = models.DateTimeField(default=timezone.now)
-    action_taken = models.CharField(max_length=20, choices=[
-        ('Charged', 'Charged'),
-        ('Repaired', 'Repaired'),
-        ('Relocated', 'Relocated'),
-    ])
     notes = models.TextField(blank=True, null=True)
+    repair_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
 
 class Report(models.Model):

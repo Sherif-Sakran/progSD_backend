@@ -8,6 +8,8 @@ from . import models
 from django.utils import timezone
 from geopy.distance import geodesic
 from decimal import Decimal
+from datetime import timedelta
+
 
 
 
@@ -314,8 +316,6 @@ def return_vehicle(request):
         return JsonResponse({'message': 'Vehicle returned successfully', 'rental_record': rental_record_json})
 
 
-from datetime import timedelta
-
 def report_defective_vehicle(request):
     if not request.user.has_perm('users.report_defective_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -375,6 +375,7 @@ def confirm_defective_vehicle(request):
         try:
             data = json.loads(request.body)
             defect_id = data.get("defect_id")
+            vehicle_found_defective = data.get("found_defective")
         except (json.JSONDecodeError, KeyError):
             return JsonResponse({'message': 'Invalid request data'}, status=400)
 
@@ -385,32 +386,57 @@ def confirm_defective_vehicle(request):
             return JsonResponse({'message': 'Defect report not found'}, status=404)
 
         selected_vehicle.status = 'Defective'
+
+        defect_report.found_defective = vehicle_found_defective
+        defect_report.confirmed_date = timezone.now()
+        
         selected_vehicle.save()
-
-        # Call confirm_defect() to set confirmed_date securely
-        defect_report.confirm_defect()
-
-        repair_log_entry = models.RepairsLog.objects.create(
-            defect=defect_report,
-            operator=request.user,
-            repair_date=timezone.now(),
-            action_taken='ReportReceived',
-            notes="Vehicle marked as defective based on customer report"
-        )
-
-        repair_log_json = {
-            "id": repair_log_entry.id,
-            "defect": repair_log_entry.defect.id,
-            "operator": repair_log_entry.operator.id,
-            "repair_date": repair_log_entry.repair_date.isoformat(),
-            "action_taken": repair_log_entry.action_taken,
-            "notes": repair_log_entry.notes
-        }
-
-        return JsonResponse({
-            'message': 'Vehicle confirmed as defective',
-            'Vehicle': {'id': selected_vehicle.id, 'status': selected_vehicle.status},
-            'Repair Log': repair_log_json
-        })
+        defect_report.save()
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+
+def repair_vehicle(request):
+    # Check for repair_vehicle permission
+    if not request.user.has_perm('users.repair_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        # Parse request data
+        data = json.loads(request.body)
+        defect_id = data.get("defect_id")
+        notes = data.get("notes", "")
+        repair_cost = data.get("repair_cost", 0.00)
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid request data'}, status=400)
+
+    try:
+        # Fetch defect report and associated vehicle
+        defect_report = models.CustomerReportedDefects.objects.get(id=defect_id)
+        selected_vehicle = defect_report.vehicle
+    except models.CustomerReportedDefects.DoesNotExist:
+        return JsonResponse({'message': 'Defect report not found'}, status=404)
+
+    # Log repair details in RepairsLog
+    repair_record = models.RepairsLog.objects.create(
+        defect=defect_report,
+        operator=request.user,
+        repair_date=timezone.now(),
+        notes=notes,
+        repair_cost=repair_cost
+    )
+
+    # Prepare JSON response
+    repair_log_json = {
+        "id": repair_record.id,
+        "defect": defect_id,
+        "operator": request.user.id,
+        "repair_date": repair_record.repair_date.isoformat(),
+        "notes": repair_record.notes,
+        "repair_cost": str(repair_record.repair_cost)
+    }
+
+    return JsonResponse({
+        'message': 'Vehicle repair logged successfully',
+        'repair_log': repair_log_json
+    })
