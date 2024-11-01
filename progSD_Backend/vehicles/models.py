@@ -94,11 +94,13 @@ class MaintenanceLog(models.Model):
         ('Charged', 'Charged'),
         ('Repaired', 'Repaired'),
         ('Relocated', 'Relocated'),
+        ('ReportReceived', 'ReportReceived'),
     ]
 
     id = models.AutoField(primary_key=True)
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    operator = models.ForeignKey(User, on_delete=models.CASCADE)
+    reported_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    operator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='operator_maintenance_logs', null=True)
     maintenance_date = models.DateField()
     description = models.TextField()
     action_taken = models.CharField(max_length=20, choices=ACTION_TAKEN_CHOICES)
