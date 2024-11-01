@@ -442,3 +442,86 @@ def repair_vehicle(request):
         'message': 'Vehicle repair logged successfully',
         'repair_log': repair_log_json
     })
+
+
+@csrf_exempt
+def list_low_battery_vehicles(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            battery_threshold = data.get("battery_level")
+            vehicle_type = data.get("type")
+
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid request data'}, status=400)
+
+        try:
+            battery_threshold = int(battery_threshold)  
+        except ValueError:
+            return JsonResponse({'message': 'Invalid battery level threshold'}, status=400)
+
+        # Filter vehicles based on battery level and type
+        low_battery_vehicles = models.Vehicle.objects.filter(
+            battery_level__lte=battery_threshold,
+            type=vehicle_type
+        )
+
+        # Prepare the response data
+        vehicles_list = [{
+            "id": vehicle.id,
+            "battery_level": vehicle.battery_level,
+            "type": vehicle.type,
+            "status": vehicle.status
+        } for vehicle in low_battery_vehicles]
+
+        return JsonResponse({'low_battery_vehicles': vehicles_list})
+
+    return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+def charge_vehicle(request):
+    if not request.user.has_perm('users.charge_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data.get("vehicle_id")
+            charge_up_to = data.get("charge_up_to")
+            notes = data.get("notes", "")
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid request data'}, status=400)
+
+        try:
+            selected_vehicle = models.Vehicle.objects.get(id=vehicle_id)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+
+        original_battery_level = selected_vehicle.battery_level
+
+        selected_vehicle.battery_level = charge_up_to
+
+        charge_record = models.ChargesLog.objects.create(
+            vehicle=selected_vehicle,
+            operator=request.user,
+            charge_date=timezone.now(),
+            charge_up_to=charge_up_to,
+            original_battery_level=original_battery_level,
+            notes=notes
+        )
+        charge_record_json = {
+            "id": charge_record.id,
+            "vehicle": selected_vehicle.id,
+            "operator": request.user.id,
+            "charge_date": charge_record.charge_date.isoformat(),
+            "charge_up_to": charge_record.charge_up_to,
+            "original_battery_level": charge_record.original_battery_level,
+            "notes": charge_record.notes
+        }
+        selected_vehicle.save()
+        charge_record.save()
+        # Prepare JSON response with charge details
+
+        return JsonResponse({'message': 'Vehicle charged successfully', 'charge_record': charge_record_json})
+
+    return JsonResponse({'message': 'Invalid request method'}, status=405)

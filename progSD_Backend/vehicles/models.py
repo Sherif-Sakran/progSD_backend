@@ -129,6 +129,17 @@ class RepairsLog(models.Model):
     repair_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
 
+class ChargesLog(models.Model):
+    id = models.AutoField(primary_key=True)
+    vehicle = models.ForeignKey('Vehicle', on_delete=models.CASCADE)
+    operator = models.ForeignKey(User, on_delete=models.CASCADE)
+    charge_date = models.DateTimeField(default=timezone.now)
+    charge_up_to = models.IntegerField()
+    original_battery_level = models.IntegerField()
+    notes = models.TextField(blank=True, null=True)
+
+
+
 class Report(models.Model):
     REPORT_TYPE_CHOICES = [
         ('Usage Report', 'Usage Report'),
