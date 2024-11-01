@@ -62,7 +62,7 @@ class Rental(models.Model):
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
     start_location = models.ForeignKey(StationLocation, related_name='rentals_start', on_delete=models.CASCADE)
-    end_location = models.ForeignKey(StationLocation, related_name='rentals_end', on_delete=models.CASCADE)
+    end_location = models.ForeignKey(StationLocation, related_name='rentals_end', on_delete=models.CASCADE, null=True)
     total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
 
