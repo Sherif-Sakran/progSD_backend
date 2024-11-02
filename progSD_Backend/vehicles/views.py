@@ -525,3 +525,58 @@ def charge_vehicle(request):
         return JsonResponse({'message': 'Vehicle charged successfully', 'charge_record': charge_record_json})
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def move_vehicle(request):
+    if not request.user.has_perm('users.move_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data["vehicle_id"]
+            move_to_station = data["move_to_station"]
+            station_id = data.get("station_id")
+            latitude = data.get("latitude")
+            longitude = data.get("longitude")
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+        try:
+            selected_vehicle = models.Vehicle.objects.get(id=vehicle_id)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+        
+
+        if move_to_station:
+            if not station_id:
+                return JsonResponse({'message': 'Station ID is required when moving to a station'}, status=400)
+            
+            try:
+                destination_station = models.StationLocation.objects.get(id=station_id)
+            except models.StationLocation.DoesNotExist:
+                return JsonResponse({'message': 'Station not found'}, status=404)
+            
+            selected_vehicle.station_id = destination_station
+            selected_vehicle.save()
+            message = 'Vehicle location updated to station successfully'
+
+        else:
+            if latitude is None or longitude is None:
+                return JsonResponse({'message': 'Latitude and longitude are required when moving to a non-station location'}, status=400)
+            
+            selected_vehicle.station_id = None
+            selected_vehicle.save()
+
+            models.VehicleLocation.objects.create(
+                vehicle_id=selected_vehicle,
+                timestamp=timezone.now(),
+                latitude=latitude,
+                longitude=longitude
+            )
+            message = 'Vehicle location updated to the specified coordinates successfully'
+
+        return JsonResponse({'message': message})
+
+    return JsonResponse({'message': 'Invalid request method'}, status=405)

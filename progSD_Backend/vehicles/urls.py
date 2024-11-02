@@ -15,6 +15,7 @@ urlpatterns = [
     path('repair_vehicle/', views.repair_vehicle, name="repair_vehicle"),
     path('charge_vehicle/', views.charge_vehicle, name="charge_vehicle"),
     path('list_low_battery_vehicles/', views.list_low_battery_vehicles, name="list_low_battery_vehicles"),
+    path('move_vehicle/', views.move_vehicle, name="move_vehicle"),
     path('list_vehicles/', views.list_vehicles, name="list_vehicles"),
     path('list_available_vehicles_at/', views.list_available_vehicles_at, name="list_available_vehicles_at"),
     path('fetch-data/vehicles', views.fetch_data_vehicles, name='fetch_data_vehicles'),
