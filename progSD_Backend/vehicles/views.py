@@ -589,7 +589,6 @@ def move_vehicle(request):
 
 @csrf_exempt 
 def update_vehicle_location(request):
-    # Check if the user has permission to update vehicle location
     if not request.user.has_perm('users.rent_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
 
@@ -621,3 +620,54 @@ def update_vehicle_location(request):
         return JsonResponse({'message': 'Vehicle location updated successfully'})
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def track_vehicle(request):
+    if not request.user.has_perm('users.track_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    
+    if request.method == 'POST':        
+        try:
+            data = json.loads(request.body)
+            vehicle_id = data["vehicle_id"]
+            time_range = data.get("time_range", None)
+            max_records = data.get("max_records", 10)
+
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+        try:
+            vehicle = models.Vehicle.objects.get(id=vehicle_id)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+
+        # Query for recent locations, optionally filtering by time range
+        try:
+            if time_range:
+                hours = int(time_range)
+                since_time = timezone.now() - timedelta(hours=hours)
+                locations = models.VehicleLocation.objects.filter(
+                    vehicle_id=vehicle, timestamp__gte=since_time
+                ).order_by('-timestamp')[:max_records]
+            else:
+                locations = models.VehicleLocation.objects.filter(
+                    vehicle_id=vehicle
+                ).order_by('-timestamp')[:max_records]
+        except ValueError:
+            return JsonResponse({'message': 'Invalid time range format'}, status=400)
+
+        # Format the response data
+        location_data = [
+            {
+                "timestamp": loc.timestamp,
+                "latitude": loc.latitude,
+                "longitude": loc.longitude
+            }
+            for loc in locations
+        ]
+
+        return JsonResponse({'vehicle_id': vehicle_id, 'locations': location_data})
+    return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+
