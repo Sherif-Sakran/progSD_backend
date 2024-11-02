@@ -9,6 +9,7 @@ from django.utils import timezone
 from geopy.distance import geodesic
 from decimal import Decimal
 from datetime import timedelta
+from django.contrib.auth.hashers import make_password
 
 
 
@@ -292,7 +293,7 @@ def return_vehicle(request):
         rental_record.total_cost = total_cost
         rental_record.is_active = False
 
-        request.user.customerprofile.account_balance += Decimal(total_cost)
+        request.user.customerprofile.charges += Decimal(total_cost)
         request.user.customerprofile.is_renting = False
 
 
@@ -551,7 +552,7 @@ def move_vehicle(request):
         
         rental_record = models.Rental.objects.filter(vehicle=selected_vehicle, is_active=True)
         
-        if rental_record.exists():
+        if rental_record:
             return JsonResponse({'message': 'You cannot move the vehicle while it is being rented'}, status=404)
 
         if move_to_station:
@@ -642,7 +643,6 @@ def track_vehicle(request):
         except models.Vehicle.DoesNotExist:
             return JsonResponse({'message': 'Vehicle not found'}, status=404)
 
-        # Query for recent locations, optionally filtering by time range
         try:
             if time_range:
                 hours = int(time_range)
@@ -657,7 +657,6 @@ def track_vehicle(request):
         except ValueError:
             return JsonResponse({'message': 'Invalid time range format'}, status=400)
 
-        # Format the response data
         location_data = [
             {
                 "timestamp": loc.timestamp,
@@ -671,3 +670,100 @@ def track_vehicle(request):
     return JsonResponse({'message': 'Invalid request method'}, status=405)
 
 
+def validate_bank_card(card_number, passcode):
+    return True
+
+
+@csrf_exempt
+def pay_charges(request):
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        payment_method = data.get("payment_method", "Account")
+        card_number = data.get("card_number", None)
+        card_passcode = data.get("card_passcode", None)
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+    try:
+        customer_profile = request.user.customerprofile
+
+        if customer_profile.is_renting:
+            return JsonResponse({'message': 'Your rental has not finished yet. '}, status=400)
+
+        last_rental = models.Rental.objects.filter(customer=request.user, is_active=False).order_by('-end_time').first()
+        if not last_rental:
+            return JsonResponse({'message': 'No unpaid rentals found.'}, status=404)
+        amount_due = last_rental.total_cost
+
+        if payment_method == "Account":    
+            if customer_profile.account_balance < amount_due:
+                return JsonResponse({'message': 'Insufficient account balance.'}, status=400)
+
+        if payment_method == "Credit Card" or payment_method == "Debit Card" or payment_method == "PayPal":
+            if not card_number or not card_passcode:
+                return JsonResponse({'message': 'Card details were not provided.'}, status=400)
+            
+            print(f'validating {card_number} with hashed pascode {card_passcode}')
+            valid_credentials = validate_bank_card(card_number, card_passcode)
+            if not valid_credentials:
+                return JsonResponse({'message': 'Credentials are not valid.'}, status=404)
+            print(f'Successful validation')
+
+
+        last_payment = models.Payment.objects.filter(rental=last_rental).first()
+
+        if last_payment:
+            return JsonResponse({'message': f'Payment has already done and processed before'})
+
+        customer_profile.charges -= Decimal(amount_due)
+        customer_profile.account_balance -= Decimal(amount_due)
+        customer_profile.save()
+
+        models.Payment.objects.create(
+            customer=request.user,
+            rental=last_rental,
+            amount=last_rental.total_cost,
+            payment_method=payment_method,
+            timestamp=timezone.now()
+        )
+        return JsonResponse({'message': f'Payment successful through {payment_method}', 'amount': amount_due})
+
+    except request.user.customerprofile.DoesNotExist:
+        return JsonResponse({'message': 'Customer profile not found.'}, status=404)
+
+
+@csrf_exempt
+def charge_account(request):
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        amount_to_pay = data["amount_to_pay"]
+        payment_method = data["payment_method"]
+        card_number = data["card_number"]
+        card_passcode = make_password(data["card_passcode"])
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+    try:
+        customer_profile = request.user.customerprofile
+
+        print(f'validating {card_number} with hashed pascode {card_passcode}')
+        valid_credentials = validate_bank_card(card_number, card_passcode)
+        if not valid_credentials:
+            return JsonResponse({'message': 'Credentials are not valid.'}, status=404)
+        print(f'Successful validation')
+        
+        customer_profile.account_balance += Decimal(amount_to_pay)
+        customer_profile.save()
+
+        return JsonResponse({'message': f'Payment successful through {payment_method}', 'account balance': customer_profile.account_balance})
+
+    except request.user.customerprofile.DoesNotExist:
+        return JsonResponse({'message': 'Customer profile not found.'}, status=404)
