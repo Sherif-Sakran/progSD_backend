@@ -9,6 +9,7 @@ urlpatterns = [
     path('list_locations/', views.list_locations, name="list_locations"),
     path('add_vehicle/', views.add_vehicle, name="add_vehicle"),
     path('rent_vehicle/', views.rent_vehicle, name="rent_vehicle"),
+    path('update_vehicle_location/', views.update_vehicle_location, name="update_vehicle_location"),
     path('return_vehicle/', views.return_vehicle, name="return_vehicle"),
     path('report_defective_vehicle/', views.report_defective_vehicle, name="report_defective_vehicle"),
     path('confirm_defective_vehicle/', views.confirm_defective_vehicle, name="confirm_defective_vehicle"),

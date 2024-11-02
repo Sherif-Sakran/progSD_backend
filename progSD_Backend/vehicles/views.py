@@ -199,8 +199,6 @@ def rent_vehicle(request):
             "last_maintenance_date": selected_vehicle.last_maintenance_date.isoformat(),
             "is_defective": selected_vehicle.is_defective,
         }
-        selected_vehicle.status = 'Rented'
-        
         rental_record = models.Rental.objects.create(
             customer=request.user,
             vehicle=selected_vehicle,
@@ -217,6 +215,9 @@ def rent_vehicle(request):
             "start_location": rental_record.start_location.id if rental_record.start_location else None,
             "is_active": rental_record.is_active
         }
+
+        selected_vehicle.status = 'Rented'
+        selected_vehicle.station_id = None
 
         request.user.customerprofile.is_renting = True
 
@@ -548,6 +549,10 @@ def move_vehicle(request):
         except models.Vehicle.DoesNotExist:
             return JsonResponse({'message': 'Vehicle not found'}, status=404)
         
+        rental_record = models.Rental.objects.filter(vehicle=selected_vehicle, is_active=True)
+        
+        if rental_record.exists():
+            return JsonResponse({'message': 'You cannot move the vehicle while it is being rented'}, status=404)
 
         if move_to_station:
             if not station_id:
@@ -578,5 +583,41 @@ def move_vehicle(request):
             message = 'Vehicle location updated to the specified coordinates successfully'
 
         return JsonResponse({'message': message})
+
+    return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt 
+def update_vehicle_location(request):
+    # Check if the user has permission to update vehicle location
+    if not request.user.has_perm('users.rent_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method == 'POST':
+        try:
+            # Parse JSON request body
+            data = json.loads(request.body)
+            vehicle_id = data["vehicle_id"]
+            latitude = data["latitude"]
+            longitude = data["longitude"]
+        except (json.JSONDecodeError, KeyError):
+            return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+        try:
+            selected_vehicle = models.Vehicle.objects.get(id=vehicle_id)
+            rental_record = models.Rental.objects.get(vehicle=selected_vehicle, customer=request.user, is_active=True)
+        except models.Vehicle.DoesNotExist:
+            return JsonResponse({'message': 'Vehicle not found'}, status=404)
+        except models.Rental.DoesNotExist:
+            return JsonResponse({'message': 'Active rental record not found for this vehicle and user'}, status=404)
+        
+        models.VehicleLocation.objects.create(
+            vehicle_id=rental_record.vehicle,
+            timestamp=timezone.now(),
+            latitude=latitude,
+            longitude=longitude
+        )
+
+        return JsonResponse({'message': 'Vehicle location updated successfully'})
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
