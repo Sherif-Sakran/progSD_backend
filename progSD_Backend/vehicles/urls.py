@@ -6,6 +6,7 @@ app_name = 'vehicles'
 urlpatterns = [
     # path('add_vehicle/', views.add_vehicle, name="add_vehicle"),
     path('add_location/', views.add_location, name="add_location"),
+    path('fetch_vehicles/', views.list_locations, name="list_locations"),
     path('list_locations/', views.list_locations, name="list_locations"),
     path('add_vehicle/', views.add_vehicle, name="add_vehicle"),
     path('rent_vehicle/', views.rent_vehicle, name="rent_vehicle"),

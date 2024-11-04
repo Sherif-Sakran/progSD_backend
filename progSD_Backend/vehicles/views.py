@@ -138,7 +138,7 @@ def list_vehicles(request):
                 "type": vehicle.type,
                 "battery_level": vehicle.battery_level,
                 "status": vehicle.status,
-                "location_id": vehicle.location.id if vehicle.location else None,
+                "location_id": vehicle.station_id.id if vehicle.station_id else None,
                 "last_maintenance_date": vehicle.last_maintenance_date.isoformat(),
                 "is_defective": vehicle.is_defective,
             }
@@ -163,12 +163,82 @@ def list_available_vehicles_at(request):
                     "type": vehicle.type,
                     "battery_level": vehicle.battery_level,
                     "status": vehicle.status,
-                    "location_id": vehicle.location.id if vehicle.location else None,
+                    "location_id": vehicle.station_id.id if vehicle.station_id else None,
                     "last_maintenance_date": vehicle.last_maintenance_date.isoformat(),
                     "is_defective": vehicle.is_defective,
                 }
             )
         return JsonResponse({'Vehicles': current_vehicles_json})
+
+
+
+@csrf_exempt
+def fetch_vehicles(request):
+    if not request.user.has_perm('users.rent_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+
+            filters = {}
+
+            vehicle_type = data.get('type')
+            status = data.get('status')
+            station_id = data.get('station_id')
+            min_battery_level = data.get('min_battery_level')
+            max_battery_level = data.get('max_battery_level')
+            is_defective = data.get('is_defective', None)
+            min_last_maintenance_date = data.get('min_last_maintenance_date')
+            max_last_maintenance_date = data.get('max_last_maintenance_date')
+
+            if vehicle_type:
+                filters['type'] = vehicle_type
+            if status:
+                filters['status'] = status
+            if station_id:
+                filters['station_id'] = station_id
+            if is_defective is not None:
+                filters['is_defective'] = is_defective
+            
+
+            if min_battery_level is not None:
+                filters['battery_level__gte'] = min_battery_level
+            if max_battery_level is not None:
+                filters['battery_level__lte'] = max_battery_level
+
+            if min_last_maintenance_date:
+                parsed_min_date = parse_date(min_last_maintenance_date)
+                if parsed_min_date:
+                    filters['last_maintenance_date__gte'] = parsed_min_date
+            if max_last_maintenance_date:
+                parsed_max_date = parse_date(max_last_maintenance_date)
+                if parsed_max_date:
+                    filters['last_maintenance_date__lte'] = parsed_max_date
+
+            vehicles = models.Vehicle.objects.filter(**filters)
+
+            # Format the response data
+            vehicle_data = [
+                {
+                    "id": vehicle.id,
+                    "type": vehicle.type,
+                    "battery_level": vehicle.battery_level,
+                    "status": vehicle.status,
+                    "station_id": vehicle.station_id.id if vehicle.station_id else None,
+                    "last_maintenance_date": vehicle.last_maintenance_date,
+                    "is_defective": vehicle.is_defective,
+                }
+                for vehicle in vehicles
+            ]
+
+            return JsonResponse({'vehicles': vehicle_data}, status=200)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'message': str(e)}, status=500)
+
+    return JsonResponse({'message': 'Method not allowed'}, status=405)
 
 
     # choose location (list provided)
