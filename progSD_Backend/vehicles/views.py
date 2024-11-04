@@ -139,6 +139,8 @@ def list_vehicles(request):
                 "battery_level": vehicle.battery_level,
                 "status": vehicle.status,
                 "location_id": vehicle.station_id.id if vehicle.station_id else None,
+                "location_latitude": vehicle.station_id.latitude if vehicle.station_id else None,
+                "location_latitude": vehicle.station_id.longitude if vehicle.station_id else None,
                 "last_maintenance_date": vehicle.last_maintenance_date.isoformat(),
                 "is_defective": vehicle.is_defective,
             }
