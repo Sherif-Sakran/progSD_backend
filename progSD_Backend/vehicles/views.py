@@ -138,9 +138,9 @@ def list_vehicles(request):
                 "type": vehicle.type,
                 "battery_level": vehicle.battery_level,
                 "status": vehicle.status,
-                "location_id": vehicle.station_id.id if vehicle.station_id else None,
+                "station_id": vehicle.station_id.id if vehicle.station_id else None,
                 "location_latitude": vehicle.station_id.latitude if vehicle.station_id else None,
-                "location_latitude": vehicle.station_id.longitude if vehicle.station_id else None,
+                "location_longitude": vehicle.station_id.longitude if vehicle.station_id else None,
                 "last_maintenance_date": vehicle.last_maintenance_date.isoformat(),
                 "is_defective": vehicle.is_defective,
             }
@@ -156,7 +156,7 @@ def list_available_vehicles_at(request):
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
         print('list available vehicles at a certain location')
-        current_vehicles = models.Vehicle.objects.filter(status='Available', location_id=location_json["location_id"])
+        current_vehicles = models.Vehicle.objects.filter(status='Available', station_id=location_json["location_id"])
         current_vehicles_json = []
         for vehicle in current_vehicles:
             current_vehicles_json.append(
@@ -165,7 +165,7 @@ def list_available_vehicles_at(request):
                     "type": vehicle.type,
                     "battery_level": vehicle.battery_level,
                     "status": vehicle.status,
-                    "location_id": vehicle.station_id.id if vehicle.station_id else None,
+                    "station_id": vehicle.station_id.id if vehicle.station_id else None,
                     "last_maintenance_date": vehicle.last_maintenance_date.isoformat(),
                     "is_defective": vehicle.is_defective,
                 }
