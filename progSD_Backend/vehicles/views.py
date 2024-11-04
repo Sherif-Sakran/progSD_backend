@@ -106,12 +106,12 @@ def add_vehicle(request):
             vehicle.save()
             print("Vehicle created and saved to database.")
             return JsonResponse({'message': 'Vehicle added successfully', 'vehicle': vehicle_json}, status=200)
-        except models.Location.DoesNotExist:
+        except models.StationLocation.DoesNotExist:
             return JsonResponse({'message': 'Station location with the given ID does not exist.'}, status=400)
 
 def list_locations(request):
     print('list locations function call')
-    current_locations = models.Location.objects.all()
+    current_locations = models.StationLocation.objects.all()
     current_locations_json = []
     for location in current_locations:
         current_locations_json.append(
@@ -125,7 +125,7 @@ def list_locations(request):
             "number_of_available_vehicles": location.number_of_available_vehicles,
             }
         )
-    return JsonResponse({'Locations': current_locations_json})
+    return JsonResponse(current_locations_json, safe=False)
 
 def list_vehicles(request):
     print('list vehicles function call')
