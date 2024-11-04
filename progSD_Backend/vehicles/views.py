@@ -308,7 +308,7 @@ def rent_vehicle(request):
         return JsonResponse({'Vehicle rented successfully': selected_vehicle_json, 'Rental': rental_record_json})
 
 
-def calculate_total_cost(distance_km, duration_hours, vehicle_type):
+def calculate_total_cost(distance_km, duration_hours, vehicle_type, discount):
     distance_rate = 1.5
     time_rate = 2.0
     
@@ -319,7 +319,9 @@ def calculate_total_cost(distance_km, duration_hours, vehicle_type):
     }
 
     total_cost = ((distance_km * distance_rate) + (duration_hours * time_rate)) * factor[vehicle_type]
-    print(total_cost)
+    print('cost before discount: ', total_cost)
+    total_cost = total_cost*(1-float(discount))
+    print('cost after discount: ', total_cost)
     return total_cost
 
 
@@ -364,8 +366,9 @@ def return_vehicle(request):
         duration = timezone.now() - rental_record.start_time
         duration_hours = duration.total_seconds() / 3600  # Convert duration to hours
 
-        # Calculate total cost
-        total_cost = calculate_total_cost(distance_km, duration_hours, selected_vehicle.type)
+
+        applied_discount = request.user.customerprofile.discount
+        total_cost = calculate_total_cost(distance_km, duration_hours, selected_vehicle.type, applied_discount)
 
         # Update rental record
         rental_record.end_time = timezone.now()
@@ -847,5 +850,127 @@ def charge_account(request):
 
         return JsonResponse({'message': f'Payment successful through {payment_method}', 'account balance': customer_profile.account_balance})
 
+    except request.user.customerprofile.DoesNotExist:
+        return JsonResponse({'message': 'Customer profile not found.'}, status=404)
+
+
+
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from django.utils import timezone
+# import json
+
+# from .models import DiscountRequests, CustomerProfile  # Assuming CustomerProfile stores the discount field
+# from django.contrib.auth.models import User
+
+
+@csrf_exempt
+def request_discount(request):
+    if not request.user.has_perm('users.request_discount') and not request.user.has_perm('users.rent_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        student_id_number = data["student_id_number"]
+        institution = data["institution"]
+        student_email = data["student_email"]
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+    try:
+        # Assuming request.user is a logged-in user
+        customer = request.user
+
+        # Create a new DiscountRequest entry
+        discount_request = models.DiscountRequests.objects.create(
+            customer=customer,
+            student_id_number=student_id_number,
+            institution=institution,
+            student_email=student_email,
+        )
+
+        return JsonResponse({
+            'message': 'Discount request created successfully',
+            'request_id': discount_request.id,
+            'student_id_number': discount_request.student_id_number,
+            'institution': discount_request.institution,
+            'student_email': discount_request.student_email
+        }, status=201)
+
+    except request.user.customerprofile.DoesNotExist:
+        return JsonResponse({'message': 'User not found'}, status=404)
+
+
+def get_unverified_requests(request):
+    if not request.user.has_perm('users.verify_requests') and not request.user.has_perm('users.track_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method != 'GET':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+    unverified_requests = models.DiscountRequests.objects.filter(confirmed_date__isnull=True)
+    
+    requests_data = [
+        {
+            'id': request.id,
+            'customer_id': request.customer.id,
+            'student_id_number': request.student_id_number,
+            'institution': request.institution,
+            'request_date': request.request_date,
+            'response_by_operator': request.response_by_operator,
+            'is_verified': request.is_verified,
+        }
+        for request in unverified_requests
+    ]
+
+    return JsonResponse(requests_data, safe=False)
+
+
+@csrf_exempt
+def verify_discount_request(request):
+    if not request.user.has_perm('users.verify_requests') and not request.user.has_perm('users.track_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        request_id = data["request_id"]
+        is_approved = data["is_approved"]
+        response_by_operator = data.get("response_by_operator", "")
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+    try:
+        # Find the discount request by ID
+        discount_request = models.DiscountRequests.objects.get(id=request_id)
+        
+        if  is_approved:
+            discount_request.is_verified = True
+            discount_request.confirmed_date = timezone.now()
+            discount_request.response_by_operator = response_by_operator
+            discount_request.save()
+            
+            # Update customer's discount in CustomerProfile
+            customer_profile = discount_request.customer.customerprofile
+            customer_profile.discount = 0.1
+            customer_profile.save()
+
+            return JsonResponse({'message': 'Discount request accepted and discount applied', 'discount': customer_profile.discount})
+
+        else:
+            # Just update response_by_operator
+            discount_request.response_by_operator = response_by_operator
+            discount_request.save()
+
+            return JsonResponse({'message': 'Discount request rejected', 'response_by_operator': response_by_operator})
+
+    except models.DiscountRequests.DoesNotExist:
+        return JsonResponse({'message': 'Discount request not found'}, status=404)
+    
     except request.user.customerprofile.DoesNotExist:
         return JsonResponse({'message': 'Customer profile not found.'}, status=404)

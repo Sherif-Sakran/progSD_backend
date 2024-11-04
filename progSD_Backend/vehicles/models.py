@@ -158,3 +158,20 @@ class Report(models.Model):
 
     def __str__(self):
         return f'Report {self.report_type} by {self.manager}'
+
+
+# for the extra functionality of student_discounts
+class DiscountRequests(models.Model):
+    id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    
+    student_id_number = models.CharField(max_length=20)
+    institution = models.CharField(max_length=100)
+    student_email = models.EmailField()
+    
+    request_date = models.DateTimeField(default=timezone.now)
+
+    response_by_operator = models.TextField(null=True)
+    
+    is_verified = models.BooleanField(default=False)
+    confirmed_date = models.DateTimeField(null=True, blank=True)

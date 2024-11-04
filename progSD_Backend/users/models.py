@@ -23,6 +23,8 @@ class CustomUser(AbstractUser):
                 ("repair_vehicle", "Can repair vehicle"),
                 ("move_vehicle", "Can move vehicle"),
                 ("generate_reports", "Can generate reports"),
+                ("request_discount", "Can request discounts"),
+                ("verify_requests", "Can verify request"),
             ]
     
     
@@ -37,7 +39,8 @@ class CustomerProfile(models.Model):
     is_renting = models.BooleanField(default=False)
     account_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     charges = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    
     def __str__(self):
         return f"{self.user.username}'s Customer Profile"
 

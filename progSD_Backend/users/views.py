@@ -57,9 +57,9 @@ def register_view(request):
 
         # Assign permissions based on role
         if role == 'customer':
-            permissions = ['rent_vehicle', 'return_vehicle', 'report_defective_vehicle', 'pay_charges']
+            permissions = ['rent_vehicle', 'return_vehicle', 'report_defective_vehicle', 'pay_charges', 'request_discount']
         elif role == 'operator':
-            permissions = ['track_vehicle', 'charge_vehicle', 'repair_vehicle', 'move_vehicle']
+            permissions = ['track_vehicle', 'charge_vehicle', 'repair_vehicle', 'move_vehicle', 'verify_requests']
         elif role == 'manager':
             permissions = ['generate_reports']
         else:
