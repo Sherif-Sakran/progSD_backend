@@ -170,7 +170,7 @@ def list_available_vehicles_at(request):
                     "is_defective": vehicle.is_defective,
                 }
             )
-        return JsonResponse({'Vehicles': current_vehicles_json})
+        return JsonResponse(current_vehicles_json, safe=False)
 
 
 
@@ -233,7 +233,7 @@ def fetch_vehicles(request):
                 for vehicle in vehicles
             ]
 
-            return JsonResponse({'vehicles': vehicle_data}, status=200)
+            return JsonResponse(vehicle_data, safe=False)
 
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
@@ -548,7 +548,7 @@ def list_low_battery_vehicles(request):
             "status": vehicle.status
         } for vehicle in low_battery_vehicles]
 
-        return JsonResponse({'low_battery_vehicles': vehicles_list})
+        return JsonResponse(vehicles_list, safe=False)
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
 
