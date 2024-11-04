@@ -136,6 +136,8 @@ def list_vehicles(request):
             {
                 "id": vehicle.id,
                 "type": vehicle.type,
+                "make": vehicle.make,
+                "model": vehicle.model,
                 "battery_level": vehicle.battery_level,
                 "status": vehicle.status,
                 "station_id": vehicle.station_id.id if vehicle.station_id else None,
@@ -163,6 +165,8 @@ def list_available_vehicles_at(request):
                 {
                     "id": vehicle.id,
                     "type": vehicle.type,
+                    "make": vehicle.make,
+                    "model": vehicle.model,
                     "battery_level": vehicle.battery_level,
                     "status": vehicle.status,
                     "station_id": vehicle.station_id.id if vehicle.station_id else None,
@@ -224,6 +228,8 @@ def fetch_vehicles(request):
                 {
                     "id": vehicle.id,
                     "type": vehicle.type,
+                    "make": vehicle.make,
+                    "model": vehicle.model,
                     "battery_level": vehicle.battery_level,
                     "status": vehicle.status,
                     "station_id": vehicle.station_id.id if vehicle.station_id else None,
@@ -266,6 +272,8 @@ def rent_vehicle(request):
         selected_vehicle_json = {
             "id": selected_vehicle.id,
             "type": selected_vehicle.type,
+            "make": selected_vehicle.make,
+            "model": selected_vehicle.model,
             "battery_level": selected_vehicle.battery_level,
             "status": selected_vehicle.status,
             "station_location": selected_vehicle.station_id.id if selected_vehicle.station_id else None,
@@ -545,6 +553,8 @@ def list_low_battery_vehicles(request):
             "id": vehicle.id,
             "battery_level": vehicle.battery_level,
             "type": vehicle.type,
+            "make": vehicle.make,
+            "model": vehicle.model,
             "status": vehicle.status
         } for vehicle in low_battery_vehicles]
 

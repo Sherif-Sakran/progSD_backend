@@ -20,6 +20,8 @@ class Vehicle(models.Model):
 
     id = models.AutoField(primary_key=True)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    make = models.CharField(max_length=20, null=True)
+    model = models.CharField(max_length=20, null=True)
     battery_level = models.IntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
     station_id = models.ForeignKey('StationLocation', on_delete=models.CASCADE, null=True)
