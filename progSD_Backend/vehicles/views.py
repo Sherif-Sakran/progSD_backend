@@ -145,7 +145,7 @@ def list_vehicles(request):
                 "is_defective": vehicle.is_defective,
             }
         )
-    return JsonResponse({'All vehicles': current_vehicles_json})
+    return JsonResponse(current_vehicles_json, safe=False)
 
 
 @csrf_exempt
