@@ -96,6 +96,13 @@ DATABASES = {
         'PORT': '6543',  # default Postgres port
     }
 }
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
 # user=postgres.jcpcrfgdwfqyhavjekym password=[YOUR-PASSWORD] host=aws-0-us-east-1.pooler.supabase.com port=6543 dbname=postgres
 
 
