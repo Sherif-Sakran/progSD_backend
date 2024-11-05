@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 
 # Create your models here.
 class CustomUser(AbstractUser):
@@ -23,6 +24,7 @@ class CustomUser(AbstractUser):
                 ("repair_vehicle", "Can repair vehicle"),
                 ("move_vehicle", "Can move vehicle"),
                 ("generate_reports", "Can generate reports"),
+                ("add_partners", "Can add partners"),
                 ("request_discount", "Can request discounts"),
                 ("verify_requests", "Can verify request"),
             ]
@@ -66,3 +68,4 @@ class ManagerProfile(models.Model):
     
     def __str__(self):
         return f"{self.user.username}'s Manager Profile"
+    

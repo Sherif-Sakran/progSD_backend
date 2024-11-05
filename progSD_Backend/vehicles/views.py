@@ -779,6 +779,7 @@ def pay_charges(request):
         payment_method = data.get("payment_method", "Account")
         card_number = data.get("card_number", None)
         card_passcode = data.get("card_passcode", None)
+        coupon = data.get("coupon", None)
 
     except (json.JSONDecodeError, KeyError):
         return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
@@ -989,3 +990,102 @@ def verify_discount_request(request):
     
     except request.user.customerprofile.DoesNotExist:
         return JsonResponse({'message': 'Customer profile not found.'}, status=404)
+
+
+
+# import json
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from django.utils import timezone
+# from django.contrib.auth.decorators import permission_required
+# from .models import Coupon, PartnerProfile
+# from users.models import CustomerProfile  # Adjust import based on your structure
+
+
+# import json
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from django.contrib.auth.decorators import permission_required
+# from django.utils.decorators import method_decorator
+# from .models import PartnerProfile
+
+@csrf_exempt
+def add_partner(request):
+    if not request.user.has_perm('users.add_partners'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        name = data["name"]
+        category = data["category"]
+        joined_date=data.get("joined_date", timezone.now())
+
+        if category not in ['gold', 'silver', 'platinum']:
+            return JsonResponse({'message': 'Invalid category'}, status=400)
+
+        partner = models.Partner.objects.create(
+            name=name,
+            category=category,
+            joined_date=joined_date
+        )
+
+        return JsonResponse({
+            'message': 'Partner added successfully',
+            'partner_id': partner.id,
+            'name': partner.name,
+            'category': partner.category
+        }, status=201)
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+
+
+
+@csrf_exempt
+def add_coupon(request):
+    if not request.user.has_perm('users.add_partners'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'message': 'Invalid request method'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        code = data["code"]
+        issued_by_id = data["issued_by"]
+        valid_until = data["valid_until"]
+        discount = data["discount"]
+        max_discount_amount = data["max_discount_amount"]
+        max_use = data.get("max_use", 1)
+        try:
+            issued_by = models.Partner.objects.get(id=issued_by_id)
+        except models.Partner.DoesNotExist:
+            return JsonResponse({'message': 'Partner not found'}, status=404)
+
+        if max_use == "unlimited":
+            max_use = 1000
+        coupon = models.Coupon.objects.create(
+            code=code,
+            issued_by=issued_by,
+            valid_until=valid_until,
+            discount=discount,
+            max_discount_amount=max_discount_amount,
+            max_use=max_use
+        )
+
+        return JsonResponse({
+            'message': 'Coupon added successfully',
+            'coupon_id': coupon.id,
+            'code': coupon.code,
+            'issued_by': coupon.issued_by.name,
+            'valid_until': coupon.valid_until,
+            'discount': coupon.discount,
+            'max_discount_amount': coupon.max_discount_amount,
+            'max_use': coupon.max_use
+        }, status=201)
+
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
+    except ValueError:
+        return JsonResponse({'message': 'Invalid data types'}, status=400)

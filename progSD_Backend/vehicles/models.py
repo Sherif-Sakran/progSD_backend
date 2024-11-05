@@ -176,3 +176,36 @@ class DiscountRequests(models.Model):
     
     is_verified = models.BooleanField(default=False)
     confirmed_date = models.DateTimeField(null=True, blank=True)
+
+
+class Partner(models.Model):
+    CATEGORY_CHOICES = [
+        ('gold', 'Gold'),
+        ('silver', 'Silver'),
+        ('platinum', 'Platinum'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    joined_date = models.DateField(default=timezone.now)
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
+
+    def __str__(self):
+        return f"{self.name} - {self.category}"
+
+
+class Coupon(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    issued_by = models.ForeignKey(Partner, on_delete=models.CASCADE)
+    valid_until = models.DateField()
+    discount = models.DecimalField(max_digits=5, decimal_places=2)
+    max_discount_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    max_use = models.IntegerField(default=1)
+
+    used_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    def is_valid(self):
+        return self.valid_until >= timezone.now().date() and self.used_by is None
+
+    def __str__(self):
+        return f"Coupon {self.code} - Discount {self.discount}%"
