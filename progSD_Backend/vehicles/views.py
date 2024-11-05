@@ -311,7 +311,8 @@ def rent_vehicle(request):
 def calculate_total_cost(distance_km, duration_hours, vehicle_type, discount):
     distance_rate = 1.5
     time_rate = 2.0
-    
+    max_discount_amount = 5
+
     factor = {
         'Electric Car': 1.5,     
         'Electric Scooter': 0.8, 
@@ -320,7 +321,12 @@ def calculate_total_cost(distance_km, duration_hours, vehicle_type, discount):
 
     total_cost = ((distance_km * distance_rate) + (duration_hours * time_rate)) * factor[vehicle_type]
     print('cost before discount: ', total_cost)
-    total_cost = total_cost*(1-float(discount))
+    
+    discount = float(discount)
+    
+    
+    total_cost = max(total_cost*(1-discount), total_cost-max_discount_amount)
+    
     print('cost after discount: ', total_cost)
     return total_cost
 
@@ -368,6 +374,10 @@ def return_vehicle(request):
 
 
         applied_discount = request.user.customerprofile.discount
+        discount_expirty_date = request.user.customerprofile.discount_valid_until
+        if discount_expirty_date < timezone.now():
+            applied_discount
+        
         total_cost = calculate_total_cost(distance_km, duration_hours, selected_vehicle.type, applied_discount)
 
         # Update rental record
@@ -876,6 +886,7 @@ def request_discount(request):
         student_id_number = data["student_id_number"]
         institution = data["institution"]
         student_email = data["student_email"]
+        id_valid_until = data["id_valid_until"]
 
     except (json.JSONDecodeError, KeyError):
         return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
@@ -890,6 +901,7 @@ def request_discount(request):
             student_id_number=student_id_number,
             institution=institution,
             student_email=student_email,
+            id_valid_until=id_valid_until,
         )
 
         return JsonResponse({
@@ -897,7 +909,8 @@ def request_discount(request):
             'request_id': discount_request.id,
             'student_id_number': discount_request.student_id_number,
             'institution': discount_request.institution,
-            'student_email': discount_request.student_email
+            'student_email': discount_request.student_email,
+            'id_valid_until': discount_request.id_valid_until
         }, status=201)
 
     except request.user.customerprofile.DoesNotExist:
@@ -917,6 +930,7 @@ def get_unverified_requests(request):
             'id': request.id,
             'customer_id': request.customer.id,
             'student_id_number': request.student_id_number,
+            'id_valid_until': request.id_valid_until,
             'institution': request.institution,
             'request_date': request.request_date,
             'response_by_operator': request.response_by_operator,
@@ -958,6 +972,7 @@ def verify_discount_request(request):
             # Update customer's discount in CustomerProfile
             customer_profile = discount_request.customer.customerprofile
             customer_profile.discount = 0.1
+            customer_profile.discount_valid_until = discount_request.id_valid_until
             customer_profile.save()
 
             return JsonResponse({'message': 'Discount request accepted and discount applied', 'discount': customer_profile.discount})

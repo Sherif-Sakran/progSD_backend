@@ -168,7 +168,8 @@ class DiscountRequests(models.Model):
     student_id_number = models.CharField(max_length=20)
     institution = models.CharField(max_length=100)
     student_email = models.EmailField()
-    
+    id_valid_until = models.DateTimeField(blank=True)
+
     request_date = models.DateTimeField(default=timezone.now)
 
     response_by_operator = models.TextField(null=True)

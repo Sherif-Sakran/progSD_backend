@@ -40,7 +40,8 @@ class CustomerProfile(models.Model):
     account_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     charges = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
-    
+    discount_valid_until = models.DateTimeField(null=True, blank=True)
+
     def __str__(self):
         return f"{self.user.username}'s Customer Profile"
 
