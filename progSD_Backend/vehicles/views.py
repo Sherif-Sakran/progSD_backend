@@ -10,6 +10,9 @@ from geopy.distance import geodesic
 from decimal import Decimal
 from datetime import timedelta
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
 
 
 
@@ -253,8 +256,10 @@ def fetch_vehicles(request):
     # choose a car (list of available car provided)
 @csrf_exempt
 def rent_vehicle(request):
-    if not request.user.has_perm('users.rent_vehicle'):
-        return JsonResponse({'message': 'Permission denied'}, status=403)
+    print(request.user.email)
+
+    # if not request.user.has_perm('users.rent_vehicle'):
+    #     return JsonResponse({'message': 'Permission denied'}, status=403)
 
 
     if request.method == 'POST':
@@ -268,6 +273,9 @@ def rent_vehicle(request):
         print('received car id', vehicle_id_JSON["id"])
         selected_vehicle = models.Vehicle.objects.filter(id=vehicle_id_JSON["id"])[0]
         
+        User = get_user_model()
+        cur_user = User.objects.get(username=vehicle_id_JSON["username"])
+        print(cur_user.email)
         
         selected_vehicle_json = {
             "id": selected_vehicle.id,
@@ -375,7 +383,7 @@ def return_vehicle(request):
 
         applied_discount = request.user.customerprofile.discount
         discount_expirty_date = request.user.customerprofile.discount_valid_until
-        if discount_expirty_date < timezone.now():
+        if discount_expirty_date and discount_expirty_date < timezone.now():
             applied_discount
         
         total_cost = calculate_total_cost(distance_km, duration_hours, selected_vehicle.type, applied_discount)
@@ -811,12 +819,26 @@ def pay_charges(request):
 
 
         last_payment = models.Payment.objects.filter(rental=last_rental).first()
-
+        coupon_row = models.Coupon.objects.filter(coupon=coupon).first()
+        
         if last_payment:
             return JsonResponse({'message': f'Payment has already done and processed before'})
 
         customer_profile.charges -= Decimal(amount_due)
-        customer_profile.account_balance -= Decimal(amount_due)
+        
+        if coupon:
+            # check if the coupon is valid
+
+
+            amount_due_after_coupon = float(amount_due)*(1-float(coupon_row.discount))
+            price_if_max_coupon = float(amount_due) - float(coupon_row.max_discount_amount)
+            amount_due = max(amount_due_after_coupon, price_if_max_coupon)
+
+        if payment_method == "Account":    
+            customer_profile.account_balance -= Decimal(amount_due)
+        
+        # coupon as a fk field is to be added to the rentals table
+        # update the max_use of the coupon
         customer_profile.save()
 
         models.Payment.objects.create(
