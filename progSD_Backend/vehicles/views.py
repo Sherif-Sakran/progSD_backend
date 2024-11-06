@@ -863,6 +863,10 @@ def pay_charges(request):
         json_return = {'message': f'Payment successful through {payment_method}', 'amount': amount_due}
         if coupon_row:
             json_return["coupon"] = coupon_row.code
+        if customer_profile.discount != Decimal(0.0):
+            json_return["discount"] = customer_profile.discount
+            json_return["discount expiry date"] = customer_profile.discount_valid_until
+
         return JsonResponse(json_return)
 
     except request.user.customerprofile.DoesNotExist:
