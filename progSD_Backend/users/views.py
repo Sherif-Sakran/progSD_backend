@@ -136,9 +136,9 @@ def get_rental_list(request):
         {
             'id': rental.id,
             'vehicle_id': rental.vehicle.id,
-            'vehicle type': rental.vehicle.type,
-            'vehicle make': rental.vehicle.make,
-            'vehicle model  ': rental.vehicle.model,
+            'vehicle_type': rental.vehicle.type,
+            'vehicle_make': rental.vehicle.make,
+            'vehicle_model  ': rental.vehicle.model,
             'start_time': rental.start_time,
             'end_time': rental.end_time,
             'start_location': rental.start_location.name,
