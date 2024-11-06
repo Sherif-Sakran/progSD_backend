@@ -135,7 +135,10 @@ def get_rental_list(request):
     rentals_list = [
         {
             'id': rental.id,
-            'vehicle': rental.vehicle.model,
+            'vehicle_id': rental.vehicle.id,
+            'vehicle type': rental.vehicle.type,
+            'vehicle make': rental.vehicle.make,
+            'vehicle model  ': rental.vehicle.model,
             'start_time': rental.start_time,
             'end_time': rental.end_time,
             'start_location': rental.start_location.name,
