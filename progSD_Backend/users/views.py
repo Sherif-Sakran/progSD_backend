@@ -17,7 +17,6 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.auth.decorators import login_required
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 
@@ -92,9 +91,7 @@ def login_view(request):
         if user is not None:
             # Log the user in
             login(request, user)
-            
-            refresh = RefreshToken.for_user(user)
-            access_token = str(refresh.access_token)
+
 
             role = user.role
             permissions = user.get_all_permissions()
@@ -102,8 +99,6 @@ def login_view(request):
                 'message': 'Login successful',
                 'username': user.username,
                 'role': role,
-                'access_token': access_token,
-                'refresh_token': str(refresh),
                 'permissions': list(permissions),
             }
             
