@@ -274,8 +274,6 @@ def rent_vehicle(request):
         selected_vehicle = models.Vehicle.objects.filter(id=vehicle_id_JSON["id"])[0]
         
         User = get_user_model()
-        cur_user = User.objects.get(username=vehicle_id_JSON["username"])
-        print(cur_user.email)
         
         selected_vehicle_json = {
             "id": selected_vehicle.id,
