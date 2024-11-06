@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.auth.decorators import login_required
+from vehicles import models
 
 
 
@@ -128,3 +129,82 @@ def logout_view(request):
         return JsonResponse({'message': 'You are now logged out'}, status=200)
 
 
+@login_required
+def get_rental_list(request):
+    rentals = models.Rental.objects.filter(customer=request.user)
+    rentals_list = [
+        {
+            'id': rental.id,
+            'vehicle': rental.vehicle.model,
+            'start_time': rental.start_time,
+            'end_time': rental.end_time,
+            'start_location': rental.start_location.name,
+            'end_location': rental.end_location.name if rental.end_location else None,
+            'total_cost': rental.total_cost,
+            'is_active': rental.is_active,
+        }
+        for rental in rentals
+    ]
+    return JsonResponse(rentals_list, safe=False)
+
+@login_required
+def get_defect_report_list(request):
+    defects = models.CustomerReportedDefects.objects.filter(reported_by=request.user)
+    defects_list = [
+        {
+            'id': defect.id,
+            'vehicle': defect.vehicle.model,
+            'report_date': defect.report_date,
+            'description': defect.description,
+            'found_defective': defect.found_defective,
+            'confirmed_date': defect.confirmed_date,
+        }
+        for defect in defects
+    ]
+    return JsonResponse(defects_list, safe=False)
+
+@login_required
+def get_discount_request_list(request):
+    discount_requests = models.DiscountRequests.objects.filter(customer=request.user)
+    discount_requests_list = [
+        {
+            'id': discount_request.id,
+            'student_id_number': discount_request.student_id_number,
+            'institution': discount_request.institution,
+            'student_email': discount_request.student_email,
+            'request_date': discount_request.request_date,
+            'response_by_operator': discount_request.response_by_operator,
+            'is_verified': discount_request.is_verified,
+            'confirmed_date': discount_request.confirmed_date,
+        }
+        for discount_request in discount_requests
+    ]
+    return JsonResponse(discount_requests_list, safe=False)
+
+@login_required
+def get_coupon_use_list(request):
+    coupons = models.CouponUse.objects.filter(user=request.user)
+    coupons_list = [
+        {
+            'coupon_code': coupon.coupon.code,
+            'used_at': coupon.used_at,
+            'discount_applied': coupon.discount_applied,
+        }
+        for coupon in coupons
+    ]
+    return JsonResponse(coupons_list, safe=False)
+
+@login_required
+def get_payment_list(request):
+    payments = models.Payment.objects.filter(customer=request.user)
+    payments_list = [
+        {
+            'id': payment.id,
+            'rental_id': payment.rental.id,
+            'amount': payment.amount,
+            'timestamp': payment.timestamp,
+            'payment_method': payment.payment_method,
+        }
+        for payment in payments
+    ]
+    return JsonResponse(payments_list, safe=False)
