@@ -73,24 +73,6 @@ class Rental(models.Model):
         return f"Rental {self.id} by {self.customer}"
 
 
-class Payment(models.Model):
-    PAYMENT_METHOD_CHOICES = [
-        ('Credit Card', 'Credit Card'),
-        ('Debit Card', 'Debit Card'),
-        ('PayPal', 'PayPal'),
-    ]
-
-    id = models.AutoField(primary_key=True)
-    customer = models.ForeignKey(User, on_delete=models.CASCADE)
-    rental = models.ForeignKey(Rental, on_delete=models.CASCADE)
-    amount = models.FloatField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
-
-    def __str__(self):
-        return f'Payment of {self.amount} by {self.customer}'
-
-
 
 # class MaintenanceLog(models.Model):
 #     ACTION_TAKEN_CHOICES = [
@@ -202,10 +184,39 @@ class Coupon(models.Model):
     max_discount_amount = models.DecimalField(max_digits=10, decimal_places=2)
     max_use = models.IntegerField(default=1)
 
-    used_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    
     def is_valid(self):
         return self.valid_until >= timezone.now().date() and self.used_by is None
 
     def __str__(self):
         return f"Coupon {self.code} - Discount {self.discount}%"
+
+
+class CouponUse(models.Model):
+    coupon = models.ForeignKey(Coupon, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Replace with CustomUser if you're using a custom user model
+    used_at = models.DateTimeField(auto_now_add=True)
+    discount_applied = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def __str__(self):
+        return f"Coupon {self.code} - Discount {self.discount}%"
+
+
+
+class Payment(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('Credit Card', 'Credit Card'),
+        ('Debit Card', 'Debit Card'),
+        ('PayPal', 'PayPal'),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
+    rental = models.ForeignKey(Rental, on_delete=models.CASCADE)
+    coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True)
+    amount = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+
+    def __str__(self):
+        return f'Payment of {self.amount} by {self.customer}'
+

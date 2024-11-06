@@ -817,36 +817,53 @@ def pay_charges(request):
 
 
         last_payment = models.Payment.objects.filter(rental=last_rental).first()
-        coupon_row = models.Coupon.objects.filter(coupon=coupon).first()
         
         if last_payment:
             return JsonResponse({'message': f'Payment has already done and processed before'})
 
         customer_profile.charges -= Decimal(amount_due)
-        
+        coupon_row = None
         if coupon:
             # check if the coupon is valid
-
-
+            coupon_row = models.Coupon.objects.filter(code=coupon).first()
+            if not coupon_row:
+                return JsonResponse({'message': 'Coupon not found'}, status=404)
+            if coupon_row.valid_until <= timezone.now().date():
+                return JsonResponse({'message': 'Coupon expired'}, status=404)
+            
+            
+            uses_count = models.CouponUse.objects.filter(coupon=coupon_row, user=request.user).count()
+            if uses_count >= coupon_row.max_use:
+                return JsonResponse({'message': 'Coupon has been used the maximum number of times.'}, status=404)
+            
             amount_due_after_coupon = float(amount_due)*(1-float(coupon_row.discount))
             price_if_max_coupon = float(amount_due) - float(coupon_row.max_discount_amount)
             amount_due = max(amount_due_after_coupon, price_if_max_coupon)
 
+
         if payment_method == "Account":    
             customer_profile.account_balance -= Decimal(amount_due)
         
-        # coupon as a fk field is to be added to the rentals table
-        # update the max_use of the coupon
-        customer_profile.save()
+        # coupon as a fk field is to be added to the payments table
 
+        customer_profile.save()
+        models.CouponUse.objects.create(
+                        coupon=coupon_row,
+                        user=request.user,
+                        discount_applied=Decimal(min(float(coupon_row.discount)*float(amount_due), float(coupon_row.max_discount_amount)))
+                    )
         models.Payment.objects.create(
             customer=request.user,
             rental=last_rental,
-            amount=last_rental.total_cost,
+            coupon=coupon_row,
+            amount=Decimal(amount_due),
             payment_method=payment_method,
             timestamp=timezone.now()
         )
-        return JsonResponse({'message': f'Payment successful through {payment_method}', 'amount': amount_due})
+        json_return = {'message': f'Payment successful through {payment_method}', 'amount': amount_due}
+        if coupon_row:
+            json_return["coupon"] = coupon_row.code
+        return JsonResponse(json_return)
 
     except request.user.customerprofile.DoesNotExist:
         return JsonResponse({'message': 'Customer profile not found.'}, status=404)
