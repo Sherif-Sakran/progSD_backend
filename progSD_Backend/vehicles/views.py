@@ -484,7 +484,8 @@ def get_defect_reports(request):
                 "report_date": report.report_date.isoformat(),
                 "description": report.description,
                 "found_defective": report.found_defective,
-                "confirmed_date": report.confirmed_date.isoformat() if report.confirmed_date else None
+                "confirmed_date": report.confirmed_date.isoformat() if report.confirmed_date else None,
+                "defect_fixed": report.defect_fixed
             }
             for report in defect_reports
         ]
