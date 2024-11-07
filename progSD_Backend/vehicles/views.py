@@ -311,7 +311,7 @@ def rent_vehicle(request):
         request.user.customerprofile.save()
         selected_vehicle.save()
         rental_record.save()
-        return JsonResponse({'Vehicle rented successfully': selected_vehicle_json, 'Rental': rental_record_json})
+        return JsonResponse({'message': 'Vehicle rented successfully', 'Rental': rental_record_json})
 
 
 def calculate_total_cost(distance_km, duration_hours, vehicle_type, discount):
