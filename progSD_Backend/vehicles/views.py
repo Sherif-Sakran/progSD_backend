@@ -479,6 +479,7 @@ def get_defect_reports(request):
             {
                 "id": report.id,
                 "vehicle": report.vehicle.id,
+                "vehicle_type": report.vehicle.type,
                 "reported_by": report.reported_by.id,
                 "report_date": report.report_date.isoformat(),
                 "description": report.description,
