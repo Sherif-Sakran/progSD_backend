@@ -548,6 +548,9 @@ def repair_vehicle(request):
     except models.CustomerReportedDefects.DoesNotExist:
         return JsonResponse({'message': 'Defect report not found'}, status=404)
 
+    defect_report.defect_fixed = True
+    defect_report.save()
+    
     # Log repair details in RepairsLog
     repair_record = models.RepairsLog.objects.create(
         defect=defect_report,

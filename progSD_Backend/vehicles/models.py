@@ -103,6 +103,7 @@ class CustomerReportedDefects(models.Model):
     
     found_defective = models.BooleanField(default=False)
     confirmed_date = models.DateTimeField(null=True, blank=True)
+    defect_fixed = models.BooleanField(default=False)
 
 class RepairsLog(models.Model):
     id = models.AutoField(primary_key=True)
