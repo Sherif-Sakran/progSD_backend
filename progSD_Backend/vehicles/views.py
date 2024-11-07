@@ -334,7 +334,7 @@ def calculate_total_cost(distance_km, duration_hours, vehicle_type, discount):
     total_cost = max(total_cost*(1-discount), total_cost-max_discount_amount)
     
     print('cost after discount: ', total_cost)
-    return min(total_cost, 2.0)
+    return max(total_cost, 2.0)
 
 
 @csrf_exempt
