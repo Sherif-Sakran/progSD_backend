@@ -24,6 +24,7 @@ urlpatterns = [
     path('add_coupon/', views.add_coupon, name="add_coupon"),
     path('request_discount/', views.request_discount, name="request_discount"),
     path('get_unverified_requests/', views.get_unverified_requests, name="get_unverified_requests"),
+    path('get_defect_reports/', views.get_defect_reports, name="get_defect_reports"),
     path('verify_discount_request/', views.verify_discount_request, name="verify_discount_request"),
     path('list_vehicles/', views.list_vehicles, name="list_vehicles"),
     path('list_available_vehicles_at/', views.list_available_vehicles_at, name="list_available_vehicles_at"),

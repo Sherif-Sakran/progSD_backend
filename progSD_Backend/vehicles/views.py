@@ -466,6 +466,33 @@ def report_defective_vehicle(request):
 
         return JsonResponse({'message': 'Vehicle reported as defective successfully', 'defect_report': defect_report_json})
     
+
+def get_defect_reports(request):
+    if not request.user.has_perm('users.repair_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+    if request.method == 'GET':
+        # Filter reports made by the current user
+        defect_reports = models.CustomerReportedDefects.objects.all()
+        
+        # Serialize the reports
+        reports_list = [
+            {
+                "id": report.id,
+                "vehicle": report.vehicle.id,
+                "reported_by": report.reported_by.id,
+                "report_date": report.report_date.isoformat(),
+                "description": report.description,
+                "found_defective": report.found_defective,
+                "confirmed_date": report.confirmed_date.isoformat() if report.confirmed_date else None
+            }
+            for report in defect_reports
+        ]
+        
+        return JsonResponse(reports_list, safe=False)
+    
+    return JsonResponse({'message': 'Method not allowed'}, status=405)
+
+
 @csrf_exempt
 def confirm_defective_vehicle(request):
     if not request.user.has_perm('users.repair_vehicle'):
