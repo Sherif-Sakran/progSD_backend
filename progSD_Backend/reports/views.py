@@ -298,3 +298,72 @@ def number_of_vehicles(request):
 
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
+
+
+
+
+from django.db.models import Avg, F, ExpressionWrapper, fields
+# from django.utils import timezone
+# from datetime import timedelta
+
+def vehicle_rental_average(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        # Get date and time range from query parameters
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
+
+        # Combine date and time strings
+        if start_date_str and start_time_str:
+            start_date_str = f"{start_date_str} {start_time_str}"
+        if end_date_str and end_time_str:
+            end_date_str = f"{end_date_str} {end_time_str}"
+
+        # Convert strings to datetime objects
+        if start_date_str:
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
+
+        # Filter Rentals with valid end_time and calculate the duration
+        rental_durations = vmodels.Rental.objects.exclude(end_time__isnull=True) \
+            .annotate(
+                duration=ExpressionWrapper(
+                    F('end_time') - F('start_time'), output_field=fields.DurationField()
+                )
+            ).select_related('vehicle')
+
+        # Apply date filters if provided
+        if start_date and end_date:
+            rental_durations = rental_durations.filter(start_time__gte=start_date, end_time__lte=end_date)
+        elif start_date:
+            rental_durations = rental_durations.filter(start_time__gte=start_date)
+        elif end_date:
+            rental_durations = rental_durations.filter(end_time__lte=end_date)
+
+        # Calculate average duration per vehicle type
+        average_durations = rental_durations.values('vehicle__type') \
+            .annotate(average_duration=Avg('duration'))
+
+        # Format the result as hours and minutes for readability
+        result = [
+            {
+                'vehicle_type': entry['vehicle__type'],
+                'average_duration': str(timedelta(seconds=entry['average_duration'].total_seconds()))
+            }
+            for entry in average_durations
+        ]
+
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
