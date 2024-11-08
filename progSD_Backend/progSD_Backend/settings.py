@@ -131,6 +131,14 @@ USE_TZ = True
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# # In settings.py
+CSRF_TRUSTED_ORIGINS = ["http://localhost:3000"]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
