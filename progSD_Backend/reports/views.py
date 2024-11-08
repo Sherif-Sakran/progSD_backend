@@ -16,18 +16,26 @@ def total_payments_per_location(request):
     
     try:
         # Optional: Get time range from query parameters (e.g., start_date, end_date)
-        start_date = request.GET.get('start_date', None)
-        end_date = request.GET.get('end_date', None)
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
 
-        print(start_date)
-        print(end_date)
-        # Convert to datetime objects if provided
-        if start_date:
-            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d')
-        if end_date:
-            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # To include the entire end date
-
+        start_date_str = start_date_str + ' ' + start_time_str
+        end_date_str = end_date_str + ' ' + end_time_str
+        # Convert to datetime objects if provided, including time
+        if start_date_str:
+            # The expected format: 'YYYY-MM-DD HH:MM:SS'
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
+        else:
+            start_date = None
         
+        if end_date_str:
+            # The expected format: 'YYYY-MM-DD HH:MM:SS'
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
+
         # Start with the Payment model and apply filters based on date range
         payment_query = models.Payment.objects.values('rental__start_location__name') \
             .annotate(total_payment=Sum('amount'))
@@ -57,22 +65,32 @@ def total_payments_per_location(request):
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
 
-
 #2: Most Used Vehicle Types Over Time
 def most_used_vehicle_types(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
     
     try:
-        # Optional: Get time range from query parameters (e.g., start_date, end_date)
-        start_date = request.GET.get('start_date', None)
-        end_date = request.GET.get('end_date', None)
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
 
-        # Convert to datetime objects if provided
-        if start_date:
-            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d')
-        if end_date:
-            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d') + timedelta(days=1)  # To include the entire end date
+        start_date_str = start_date_str + ' ' + start_time_str
+        end_date_str = end_date_str + ' ' + end_time_str
+
+        # Convert to datetime objects if provided, including time
+        if start_date_str:
+            # The expected format: 'YYYY-MM-DD HH:MM:SS'
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
+        else:
+            start_date = None
+        
+        if end_date_str:
+            # The expected format: 'YYYY-MM-DD HH:MM:SS'
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
 
         # Start with the Rental model and join with the Vehicle model
         vehicle_usage_query = models.Rental.objects.values('vehicle__type') \
@@ -102,6 +120,7 @@ def most_used_vehicle_types(request):
     
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
+
 
 #3: Vehicles Currently in Use
 def vehicles_currently_in_use(request):
@@ -137,19 +156,31 @@ def most_popular_rental_locations(request):
         return JsonResponse({'message': 'Permission denied'}, status=403)
 
     try:
-        # Get start_date and end_date from the query parameters
-        start_date_str = request.GET.get('start_date')
-        end_date_str = request.GET.get('end_date')
-        
-        # Convert string dates to datetime objects if provided
-        if start_date_str and end_date_str:
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d')
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d')
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
+
+        start_date_str = start_date_str + ' ' + start_time_str
+        end_date_str = end_date_str + ' ' + end_time_str
+
+        # Convert to datetime objects with time if provided
+        if start_date_str:
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
         else:
-            # Default to the past 30 days if no date range is provided
+            start_date = None
+        
+        if end_date_str:
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
+
+        # Default to the past 30 days if no date range is provided
+        if not start_date:
             end_date = timezone.now()
             start_date = end_date - timedelta(days=30)
 
+        # Query for popular rental locations within the date range
         location_popularity = models.Rental.objects.filter(
             start_time__gte=start_date,
             start_time__lte=end_date
@@ -157,40 +188,53 @@ def most_popular_rental_locations(request):
             .annotate(rental_count=Count('start_location')) \
             .order_by('-rental_count')
 
-        result = []
-        for entry in location_popularity:
-            result.append({
+        # Format the result
+        result = [
+            {
                 'location_id': entry['start_location__id'],
                 'location_name': entry['start_location__name'],
                 'location_address': entry['start_location__address'],
                 'rental_count': entry['rental_count'],
-            })
+            }
+            for entry in location_popularity
+        ]
 
         return JsonResponse(result, safe=False)
 
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
-    
+
 
 def most_popular_destination_locations(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
 
     try:
-        # Get start_date and end_date from the query parameters
-        start_date_str = request.GET.get('start_date')
-        end_date_str = request.GET.get('end_date')
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
 
-        # Convert string dates to datetime objects if provided
-        if start_date_str and end_date_str:
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d')
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d')
+        start_date_str = start_date_str + ' ' + start_time_str
+        end_date_str = end_date_str + ' ' + end_time_str
+
+        # Convert to datetime objects with time if provided
+        if start_date_str:
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
         else:
-            # Default to the past 30 days if no date range is provided
+            start_date = None
+        
+        if end_date_str:
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
+
+        # Default to the past 30 days if no date range is provided
+        if not start_date:
             end_date = timezone.now()
             start_date = end_date - timedelta(days=30)
 
-
+        # Query for popular destination locations within the date range
         location_popularity = models.Rental.objects.filter(
             start_time__gte=start_date,
             start_time__lte=end_date
@@ -198,18 +242,19 @@ def most_popular_destination_locations(request):
             .annotate(destination_count=Count('end_location')) \
             .order_by('-destination_count')
 
-        result = []
-        for entry in location_popularity:
-            result.append({
+        # Format the result
+        result = [
+            {
                 'location_id': entry['end_location__id'],
                 'location_name': entry['end_location__name'],
                 'location_address': entry['end_location__address'],
                 'destination_count': entry['destination_count'],
-            })
+            }
+            for entry in location_popularity
+        ]
 
         return JsonResponse(result, safe=False)
 
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
     
-
