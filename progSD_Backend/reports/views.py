@@ -7,12 +7,13 @@ from vehicles import models
 from vehicles import models as vmodels
 from django.db.models import Sum
 from datetime import timedelta
-from django.db.models import Count
+from django.db.models import Count, Q
 
 
 from django.db.models import Sum
 from django.utils.timezone import make_aware
 import datetime
+from django.db.models import Avg, F, ExpressionWrapper, fields
 
 
 def total_payments_per_location(request):
@@ -300,12 +301,6 @@ def number_of_vehicles(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 
-
-
-from django.db.models import Avg, F, ExpressionWrapper, fields
-# from django.utils import timezone
-# from datetime import timedelta
-
 def vehicle_rental_average(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -363,6 +358,61 @@ def vehicle_rental_average(request):
             for entry in average_durations
         ]
 
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
+
+
+def most_reported_vehicles(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
+
+        if start_date_str and start_time_str:
+            start_datetime_str = f"{start_date_str} {start_time_str}"
+            start_datetime = timezone.datetime.strptime(start_datetime_str, '%Y-%m-%d %H:%M:%S')
+        else:
+            start_datetime = None
+        
+        if end_date_str and end_time_str:
+            end_datetime_str = f"{end_date_str} {end_time_str}"
+            end_datetime = timezone.datetime.strptime(end_datetime_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_datetime = None
+
+        reported_vehicles = vmodels.CustomerReportedDefects.objects.values('vehicle__type') \
+            .annotate(
+                total_reports=Count('id'),
+                defective_reports=Count('id', filter=Q(found_defective=True)),
+                non_defective_reports=Count('id', filter=Q(found_defective=False))
+            )
+
+        # Apply date range filters if both start_datetime and end_datetime are provided
+        if start_datetime and end_datetime:
+            reported_vehicles = reported_vehicles.filter(report_date__gte=start_datetime, report_date__lte=end_datetime)
+        elif start_datetime:
+            reported_vehicles = reported_vehicles.filter(report_date__gte=start_datetime)
+        elif end_datetime:
+            reported_vehicles = reported_vehicles.filter(report_date__lte=end_datetime)
+
+        # Format the result
+        result = [
+            {
+                'vehicle_type': entry['vehicle__type'],
+                'total_reports': entry['total_reports'],
+                'defective_reports': entry['defective_reports'],
+                'non_defective_reports': entry['non_defective_reports']
+            }
+            for entry in reported_vehicles
+        ]
+
+        # Return the formatted result as a JSON response
         return JsonResponse(result, safe=False)
 
     except Exception as e:
