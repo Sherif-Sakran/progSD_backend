@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.db.models import Count
 
 
-
+@csrf_exempt
 def total_payments_per_location(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -66,6 +66,7 @@ def total_payments_per_location(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 #2: Most Used Vehicle Types Over Time
+@csrf_exempt
 def most_used_vehicle_types(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -123,6 +124,7 @@ def most_used_vehicle_types(request):
 
 
 #3: Vehicles Currently in Use
+@csrf_exempt
 def vehicles_currently_in_use(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -151,6 +153,7 @@ def vehicles_currently_in_use(request):
         return JsonResponse({'message': str(e)}, status=400)
  
 #4: Most Popular Rental Locations
+@csrf_exempt
 def most_popular_rental_locations(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -205,6 +208,7 @@ def most_popular_rental_locations(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 
+@csrf_exempt
 def most_popular_destination_locations(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
