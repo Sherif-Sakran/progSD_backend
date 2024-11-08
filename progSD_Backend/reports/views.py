@@ -10,60 +10,63 @@ from datetime import timedelta
 from django.db.models import Count
 
 
+from django.db.models import Sum
+from django.utils.timezone import make_aware
+import datetime
+
+
 def total_payments_per_location(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
     
     try:
-        # Optional: Get time range from query parameters (e.g., start_date, end_date)
-        start_date_str = request.GET.get('start_date', None)
-        start_time_str = request.GET.get('start_time', None)
-        end_date_str = request.GET.get('end_date', None)
-        end_time_str = request.GET.get('end_time', None)
-
-        start_date_str = start_date_str + ' ' + start_time_str
-        end_date_str = end_date_str + ' ' + end_time_str
-        # Convert to datetime objects if provided, including time
-        if start_date_str:
-            # The expected format: 'YYYY-MM-DD HH:MM:SS'
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
-        else:
-            start_date = None
+        # Get and parse date/time range from query parameters
+        start_date_str = request.GET.get('start_date')
+        start_time_str = request.GET.get('start_time')
+        end_date_str = request.GET.get('end_date')
+        end_time_str = request.GET.get('end_time')
         
-        if end_date_str:
-            # The expected format: 'YYYY-MM-DD HH:MM:SS'
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        if start_date_str and start_time_str:
+            start_datetime = make_aware(datetime.datetime.strptime(f"{start_date_str} {start_time_str}", '%Y-%m-%d %H:%M:%S'))
         else:
-            end_date = None
+            start_datetime = None
 
-        # Start with the Payment model and apply filters based on date range
-        payment_query = models.Payment.objects.values('rental__start_location__name') \
+        if end_date_str and end_time_str:
+            end_datetime = make_aware(datetime.datetime.strptime(f"{end_date_str} {end_time_str}", '%Y-%m-%d %H:%M:%S'))
+        else:
+            end_datetime = None
+
+        # Query all station locations
+        all_locations = vmodels.StationLocation.objects.values('id', 'name')
+
+        # Fetch total payments for each location with rentals in the time range
+        payment_query = vmodels.Payment.objects.select_related('rental__start_location') \
+            .values('rental__start_location__id') \
             .annotate(total_payment=Sum('amount'))
+        
+        # Apply date filters if specified
+        if start_datetime:
+            payment_query = payment_query.filter(rental__start_time__gte=start_datetime)
+        if end_datetime:
+            payment_query = payment_query.filter(rental__end_time__lte=end_datetime)
 
-        # Apply date filters if both start_date and end_date are provided
-        if start_date and end_date:
-            payment_query = payment_query.filter(rental__start_time__gte=start_date, rental__end_time__lte=end_date)
-        elif start_date:
-            payment_query = payment_query.filter(rental__start_time__gte=start_date)
-        elif end_date:
-            payment_query = payment_query.filter(rental__end_time__lte=end_date)
+        payment_dict = {entry['rental__start_location__id']: entry['total_payment'] for entry in payment_query}
 
-        # Optionally, order by location name
-        total_payments = payment_query.order_by('rental__start_location__name')
-
-        # Format the result
         result = [
             {
-                'location': entry['rental__start_location__name'],
-                'total_payment': entry['total_payment']
+                'location': location['name'],
+                'total_payment': payment_dict.get(location['id'], 0.0)
             }
-            for entry in total_payments
+            for location in all_locations
         ]
         
+        result.sort(key=lambda x: x['total_payment'], reverse=True)
+
         return JsonResponse(result, safe=False)
     
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
+
 
 #2: Most Used Vehicle Types Over Time
 def most_used_vehicle_types(request):
