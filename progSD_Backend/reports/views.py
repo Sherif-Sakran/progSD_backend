@@ -263,11 +263,6 @@ def most_popular_destination_locations(request):
         return JsonResponse({'message': str(e)}, status=400)
     
 
-from django.http import JsonResponse
-from django.db.models import Count
-from . import models
-
-
 def number_of_vehicles(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
