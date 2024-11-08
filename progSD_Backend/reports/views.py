@@ -270,8 +270,9 @@ def most_popular_destination_locations(request):
 
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
-    
 
+   
+@csrf_exempt
 def number_of_vehicles(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -305,6 +306,7 @@ def number_of_vehicles(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 
+@csrf_exempt
 def vehicle_rental_average(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -368,6 +370,7 @@ def vehicle_rental_average(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 
+@csrf_exempt
 def most_reported_vehicles(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -423,6 +426,7 @@ def most_reported_vehicles(request):
         return JsonResponse({'message': str(e)}, status=400)
 
 
+@csrf_exempt
 def number_of_users(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
@@ -449,6 +453,7 @@ def number_of_users(request):
         return JsonResponse({'message': str(e)}, status=400)
     
 
+@csrf_exempt
 def users_growth(request):
     if not request.user.has_perm('users.generate_reports'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
