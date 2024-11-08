@@ -4,10 +4,12 @@ from django.utils.timezone import datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from vehicles import models
+from vehicles import models as vmodels
 from django.db.models import Sum
 from datetime import timedelta
 from django.db.models import Count
-
+from django.utils.timezone import make_aware
+import datetime
 
 @csrf_exempt
 def total_payments_per_location(request):
@@ -15,55 +17,53 @@ def total_payments_per_location(request):
         return JsonResponse({'message': 'Permission denied'}, status=403)
     
     try:
-        # Optional: Get time range from query parameters (e.g., start_date, end_date)
-        start_date_str = request.GET.get('start_date', None)
-        start_time_str = request.GET.get('start_time', None)
-        end_date_str = request.GET.get('end_date', None)
-        end_time_str = request.GET.get('end_time', None)
-
-        start_date_str = start_date_str + ' ' + start_time_str
-        end_date_str = end_date_str + ' ' + end_time_str
-        # Convert to datetime objects if provided, including time
-        if start_date_str:
-            # The expected format: 'YYYY-MM-DD HH:MM:SS'
-            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
-        else:
-            start_date = None
+        # Get and parse date/time range from query parameters
+        start_date_str = request.GET.get('start_date')
+        start_time_str = request.GET.get('start_time')
+        end_date_str = request.GET.get('end_date')
+        end_time_str = request.GET.get('end_time')
         
-        if end_date_str:
-            # The expected format: 'YYYY-MM-DD HH:MM:SS'
-            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        if start_date_str and start_time_str:
+            start_datetime = make_aware(datetime.datetime.strptime(f"{start_date_str} {start_time_str}", '%Y-%m-%d %H:%M:%S'))
         else:
-            end_date = None
+            start_datetime = None
 
-        # Start with the Payment model and apply filters based on date range
-        payment_query = models.Payment.objects.values('rental__start_location__name') \
+        if end_date_str and end_time_str:
+            end_datetime = make_aware(datetime.datetime.strptime(f"{end_date_str} {end_time_str}", '%Y-%m-%d %H:%M:%S'))
+        else:
+            end_datetime = None
+
+        # Query all station locations
+        all_locations = vmodels.StationLocation.objects.values('id', 'name')
+
+        # Fetch total payments for each location with rentals in the time range
+        payment_query = vmodels.Payment.objects.select_related('rental__start_location') \
+            .values('rental__start_location__id') \
             .annotate(total_payment=Sum('amount'))
+        
+        # Apply date filters if specified
+        if start_datetime:
+            payment_query = payment_query.filter(rental__start_time__gte=start_datetime)
+        if end_datetime:
+            payment_query = payment_query.filter(rental__end_time__lte=end_datetime)
 
-        # Apply date filters if both start_date and end_date are provided
-        if start_date and end_date:
-            payment_query = payment_query.filter(rental__start_time__gte=start_date, rental__end_time__lte=end_date)
-        elif start_date:
-            payment_query = payment_query.filter(rental__start_time__gte=start_date)
-        elif end_date:
-            payment_query = payment_query.filter(rental__end_time__lte=end_date)
+        payment_dict = {entry['rental__start_location__id']: entry['total_payment'] for entry in payment_query}
 
-        # Optionally, order by location name
-        total_payments = payment_query.order_by('rental__start_location__name')
-
-        # Format the result
         result = [
             {
-                'location': entry['rental__start_location__name'],
-                'total_payment': entry['total_payment']
+                'location': location['name'],
+                'total_payment': payment_dict.get(location['id'], 0.0)
             }
-            for entry in total_payments
+            for location in all_locations
         ]
         
+        result.sort(key=lambda x: x['total_payment'], reverse=True)
+
         return JsonResponse(result, safe=False)
     
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
+
 
 #2: Most Used Vehicle Types Over Time
 @csrf_exempt
@@ -262,3 +262,109 @@ def most_popular_destination_locations(request):
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
     
+
+from django.http import JsonResponse
+from django.db.models import Count
+from . import models
+
+
+def number_of_vehicles(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        station_id = request.GET.get('station_id', None)
+        vehicle_type = request.GET.get('vehicle_type', None)
+
+        vehicle_query = vmodels.StationLocation.objects.values('id', 'name') \
+            .annotate(vehicle_count=Count('vehicle'))
+
+        if station_id:
+            vehicle_query = vehicle_query.filter(id=station_id)
+        if vehicle_type:
+            vehicle_query = vehicle_query.filter(vehicle__type=vehicle_type)
+
+        vehicle_counts = vehicle_query.order_by('name')
+
+        result = [
+            {
+                'station_id': entry['id'],
+                'station_name': entry['name'],
+                'vehicle_count': entry['vehicle_count']
+            }
+            for entry in vehicle_counts
+        ]
+
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
+
+
+
+
+from django.db.models import Avg, F, ExpressionWrapper, fields
+# from django.utils import timezone
+# from datetime import timedelta
+
+def vehicle_rental_average(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        # Get date and time range from query parameters
+        start_date_str = request.GET.get('start_date', None)
+        start_time_str = request.GET.get('start_time', None)
+        end_date_str = request.GET.get('end_date', None)
+        end_time_str = request.GET.get('end_time', None)
+
+        # Combine date and time strings
+        if start_date_str and start_time_str:
+            start_date_str = f"{start_date_str} {start_time_str}"
+        if end_date_str and end_time_str:
+            end_date_str = f"{end_date_str} {end_time_str}"
+
+        # Convert strings to datetime objects
+        if start_date_str:
+            start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d %H:%M:%S')
+        else:
+            start_date = None
+
+        if end_date_str:
+            end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d %H:%M:%S') + timedelta(days=1)  # To include the entire end date
+        else:
+            end_date = None
+
+        # Filter Rentals with valid end_time and calculate the duration
+        rental_durations = vmodels.Rental.objects.exclude(end_time__isnull=True) \
+            .annotate(
+                duration=ExpressionWrapper(
+                    F('end_time') - F('start_time'), output_field=fields.DurationField()
+                )
+            ).select_related('vehicle')
+
+        # Apply date filters if provided
+        if start_date and end_date:
+            rental_durations = rental_durations.filter(start_time__gte=start_date, end_time__lte=end_date)
+        elif start_date:
+            rental_durations = rental_durations.filter(start_time__gte=start_date)
+        elif end_date:
+            rental_durations = rental_durations.filter(end_time__lte=end_date)
+
+        # Calculate average duration per vehicle type
+        average_durations = rental_durations.values('vehicle__type') \
+            .annotate(average_duration=Avg('duration'))
+
+        # Format the result as hours and minutes for readability
+        result = [
+            {
+                'vehicle_type': entry['vehicle__type'],
+                'average_duration': str(timedelta(seconds=entry['average_duration'].total_seconds()))
+            }
+            for entry in average_durations
+        ]
+
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
