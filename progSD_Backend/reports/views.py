@@ -4,10 +4,10 @@ from django.utils.timezone import datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from vehicles import models
+from vehicles import models as vmodels
 from django.db.models import Sum
 from datetime import timedelta
 from django.db.models import Count
-
 
 
 def total_payments_per_location(request):
@@ -258,3 +258,40 @@ def most_popular_destination_locations(request):
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
     
+
+from django.http import JsonResponse
+from django.db.models import Count
+from . import models
+
+
+def number_of_vehicles(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        station_id = request.GET.get('station_id', None)
+        vehicle_type = request.GET.get('vehicle_type', None)
+
+        vehicle_query = vmodels.StationLocation.objects.values('id', 'name') \
+            .annotate(vehicle_count=Count('vehicle'))
+
+        if station_id:
+            vehicle_query = vehicle_query.filter(id=station_id)
+        if vehicle_type:
+            vehicle_query = vehicle_query.filter(vehicle__type=vehicle_type)
+
+        vehicle_counts = vehicle_query.order_by('name')
+
+        result = [
+            {
+                'station_id': entry['id'],
+                'station_name': entry['name'],
+                'vehicle_count': entry['vehicle_count']
+            }
+            for entry in vehicle_counts
+        ]
+
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)

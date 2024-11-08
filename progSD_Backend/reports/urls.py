@@ -9,4 +9,5 @@ urlpatterns = [
     path('vehicles_currently_in_use/', views.vehicles_currently_in_use, name="vehicles_currently_in_use"),
     path('most_popular_rental_locations/', views.most_popular_rental_locations, name="most_popular_rental_locations"),
     path('most_popular_destination_locations/', views.most_popular_destination_locations, name="most_popular_destination_locations"),
+    path('number_of_vehicles/', views.number_of_vehicles, name="number_of_vehicles"),
 ]
