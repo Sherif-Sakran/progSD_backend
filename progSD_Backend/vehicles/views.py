@@ -395,6 +395,29 @@ def return_vehicle(request):
         request.user.customerprofile.charges += Decimal(total_cost)
         request.user.customerprofile.is_renting = False
 
+        """
+        class VehicleLocation(models.Model):
+    id = models.AutoField(primary_key=True)
+    vehicle_id = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    longitude = models.FloatField()
+    latitude = models.FloatField()
+
+    class Meta:
+        unique_together = ('vehicle_id', 'timestamp')
+
+    def __str__(self):
+        return f"Location for {self.vehicle} at {self.timestamp}"
+
+        """
+
+        vehicle_return_location = models.VehicleLocation(
+            vehicle_id = selected_vehicle,
+            longitude=end_location.longitude,
+            latitude=end_location.latitude
+        )
+
+        vehicle_return_location.save()
 
         rental_record_json = {
             "id": rental_record.id,

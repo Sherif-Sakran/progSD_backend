@@ -24,7 +24,7 @@ class Vehicle(models.Model):
     model = models.CharField(max_length=20, null=True)
     battery_level = models.IntegerField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES)
-    station_id = models.ForeignKey('StationLocation', on_delete=models.CASCADE, null=True)
+    station_id = models.ForeignKey('StationLocation', on_delete=models.SET_NULL, null=True)
     last_maintenance_date = models.DateField()
     is_defective = models.BooleanField(default=False)
 
