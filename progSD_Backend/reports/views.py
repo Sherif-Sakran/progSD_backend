@@ -14,6 +14,11 @@ from django.db.models import Sum
 from django.utils.timezone import make_aware
 import datetime
 from django.db.models import Avg, F, ExpressionWrapper, fields
+from django.contrib.auth import get_user_model
+
+
+User = get_user_model()
+
 
 @csrf_exempt
 def total_payments_per_location(request):
@@ -414,5 +419,68 @@ def most_reported_vehicles(request):
         # Return the formatted result as a JSON response
         return JsonResponse(result, safe=False)
 
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
+
+
+def number_of_users(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        start_date_str = request.GET.get('start_date', None)
+        end_date_str = request.GET.get('end_date', None)
+
+        if not start_date_str or not end_date_str:
+            return JsonResponse({'message': 'Start date and End date are required'}, status=400)
+
+        start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # If the end date is provided, extend it to the last second of the day
+        end_date = timezone.make_aware(datetime.datetime.combine(end_date, datetime.datetime.max.time()))
+
+        # Filter users who have joined within the specified date range
+        user_count = User.objects.filter(date_joined__gte=start_date, date_joined__lte=end_date).count()
+
+        return JsonResponse({'user_count': user_count})
+    
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
+    
+
+def users_growth(request):
+    if not request.user.has_perm('users.generate_reports'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        # Retrieve start and end date parameters (in 'YYYY-MM-DD' format)
+        start_date_str = request.GET.get('start_date', None)
+        end_date_str = request.GET.get('end_date', None)
+
+        if not start_date_str or not end_date_str:
+            return JsonResponse({'message': 'Start date and End date are required'}, status=400)
+
+        start_date = timezone.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = timezone.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # If the end date is provided, extend it to the last second of the day
+        end_date = timezone.make_aware(datetime.datetime.combine(end_date, datetime.datetime.max.time()))
+
+        # Group users by date_joined and count them
+        # extra extracts the date from the date_joined field since it is a timestamp
+        user_counts = User.objects.filter(date_joined__gte=start_date, date_joined__lte=end_date) \
+            .extra(select={'date': 'date(date_joined)'}).values('date') \
+            .annotate(user_count=Count('id')).order_by('date')
+
+        cumulative_count = 0
+        result = []
+        for user in user_counts:
+            cumulative_count += user['user_count']
+            result.append({'date': user['date'].strftime('%Y-%m-%d'), 'user_count': cumulative_count})
+
+
+        return JsonResponse(result, safe=False)
+    
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)

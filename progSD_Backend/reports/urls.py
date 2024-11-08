@@ -12,4 +12,6 @@ urlpatterns = [
     path('number_of_vehicles/', views.number_of_vehicles, name="number_of_vehicles"),
     path('vehicle_rental_average/', views.vehicle_rental_average, name="vehicle_rental_average"),
     path('most_reported_vehicles/', views.most_reported_vehicles, name="most_reported_vehicles"),
+    path('number_of_users/', views.number_of_users, name="number_of_users"),
+    path('users_growth/', views.users_growth, name="users_growth"),
 ]
