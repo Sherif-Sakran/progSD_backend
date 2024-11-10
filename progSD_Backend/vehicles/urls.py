@@ -27,6 +27,7 @@ urlpatterns = [
     path('get_defect_reports/', views.get_defect_reports, name="get_defect_reports"),
     path('verify_discount_request/', views.verify_discount_request, name="verify_discount_request"),
     path('list_vehicles/', views.list_vehicles, name="list_vehicles"),
+    path('list_partners/', views.list_partners, name="list_partners"),
     path('list_available_vehicles_at/', views.list_available_vehicles_at, name="list_available_vehicles_at"),
     path('fetch_vehicles/', views.list_locations, name="list_locations"),
     path('fetch-data/vehicles', views.fetch_data_vehicles, name='fetch_data_vehicles'),

@@ -1188,8 +1188,8 @@ def add_coupon(request):
 
 
 @csrf_exempt
-def partners_list(request):
-    if not request.user.has_perm('partners.add_partners') and not request.user.has_perm('partners.move_vehicle'):
+def list_partners(request):
+    if not request.user.has_perm('users.add_partners') and not request.user.has_perm('users.move_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
 
     try:
