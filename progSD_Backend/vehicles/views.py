@@ -1107,7 +1107,7 @@ def verify_discount_request(request):
 
 @csrf_exempt
 def add_partner(request):
-    if not request.user.has_perm('users.add_partners'):
+    if not request.user.has_perm('users.add_partners') and not request.user.has_perm('users.move_vehicle'):
         return JsonResponse({'message': 'Permission denied'}, status=403)
     if request.method != 'POST':
         return JsonResponse({'message': 'Invalid request method'}, status=405)
