@@ -1,28 +1,19 @@
 import json
-from django.shortcuts import render
 from django.http import HttpResponse
-from django.db import connection
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.dateparse import parse_date
 import json
 from . import models
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.auth.decorators import login_required
 from vehicles import models
 
 
-
-User = get_user_model()  # this will now refer to CustomUser
-
+User = get_user_model()
 
 
 @csrf_exempt
@@ -150,6 +141,7 @@ def get_rental_list(request):
     ]
     return JsonResponse(rentals_list, safe=False)
 
+
 @login_required
 def get_defect_report_list(request):
     defects = models.CustomerReportedDefects.objects.filter(reported_by=request.user)
@@ -165,6 +157,7 @@ def get_defect_report_list(request):
         for defect in defects
     ]
     return JsonResponse(defects_list, safe=False)
+
 
 @login_required
 def get_discount_request_list(request):
@@ -184,6 +177,7 @@ def get_discount_request_list(request):
     ]
     return JsonResponse(discount_requests_list, safe=False)
 
+
 @login_required
 def get_coupon_use_list(request):
     coupons = models.CouponUse.objects.filter(user=request.user)
@@ -196,6 +190,7 @@ def get_coupon_use_list(request):
         for coupon in coupons
     ]
     return JsonResponse(coupons_list, safe=False)
+
 
 @login_required
 def get_payment_list(request):

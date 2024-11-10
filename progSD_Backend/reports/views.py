@@ -8,8 +8,6 @@ from vehicles import models as vmodels
 from django.db.models import Sum
 from datetime import timedelta
 from django.db.models import Count, Q
-
-
 from django.db.models import Sum
 from django.utils.timezone import make_aware
 import datetime
@@ -161,6 +159,7 @@ def vehicles_currently_in_use(request):
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=400)
  
+
 #4: Most Popular Rental Locations
 @csrf_exempt
 def most_popular_rental_locations(request):
