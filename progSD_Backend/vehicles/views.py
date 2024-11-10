@@ -14,9 +14,6 @@ from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 
 
-
-
-
 def fetch_data_vehicles(request):
     with connection.cursor() as cursor:
         cursor.execute('SELECT * FROM "Vehicles"')
@@ -40,18 +37,6 @@ def list_tables(request):
     return JsonResponse({'tables': [table[0] for table in tables]})
 
 
-
-# location insertion example
-"""
-{
-    "name": "Glasgow University",
-    "address": "G12 5QQ",
-    "latitude": 123.0,
-    "longitude": 123.0,
-    "vehicle_capacity": 50,
-    "number_of_available_vehicles": 50   
-}
-"""
 @csrf_exempt
 def add_location(request):
     if request.method == 'POST':
@@ -74,17 +59,6 @@ def add_location(request):
     return JsonResponse({'message': 'Location added successfully', 'Station': location_json}, status=200)
 
 
-# vehicle insertion example
-"""
-{
-    "type": "Electric Car",
-    "battery_level": 100,
-    "status": "Available",
-    "location_id": 1,
-    "last_maintenance_date": "2023-11-18",
-    "is_defective": 0
-}
-"""
 @csrf_exempt
 def add_vehicle(request):
     if request.method == 'POST':
@@ -112,6 +86,7 @@ def add_vehicle(request):
         except models.StationLocation.DoesNotExist:
             return JsonResponse({'message': 'Station location with the given ID does not exist.'}, status=400)
 
+
 def list_locations(request):
     print('list locations function call')
     current_locations = models.StationLocation.objects.all()
@@ -129,6 +104,7 @@ def list_locations(request):
             }
         )
     return JsonResponse(current_locations_json, safe=False)
+
 
 def list_vehicles(request):
     print('list vehicles function call')
@@ -178,7 +154,6 @@ def list_available_vehicles_at(request):
                 }
             )
         return JsonResponse(current_vehicles_json, safe=False)
-
 
 
 @csrf_exempt
@@ -252,14 +227,10 @@ def fetch_vehicles(request):
     return JsonResponse({'message': 'Method not allowed'}, status=405)
 
 
-    # choose location (list provided)
-    # choose a car (list of available car provided)
 @csrf_exempt
 def rent_vehicle(request):
-    print(request.user.email)
-
-    # if not request.user.has_perm('users.rent_vehicle'):
-    #     return JsonResponse({'message': 'Permission denied'}, status=403)
+    if not request.user.has_perm('users.rent_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
 
 
     if request.method == 'POST':
@@ -394,22 +365,6 @@ def return_vehicle(request):
 
         request.user.customerprofile.charges += Decimal(total_cost)
         request.user.customerprofile.is_renting = False
-
-        """
-        class VehicleLocation(models.Model):
-    id = models.AutoField(primary_key=True)
-    vehicle_id = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    longitude = models.FloatField()
-    latitude = models.FloatField()
-
-    class Meta:
-        unique_together = ('vehicle_id', 'timestamp')
-
-    def __str__(self):
-        return f"Location for {self.vehicle} at {self.timestamp}"
-
-        """
 
         vehicle_return_location = models.VehicleLocation(
             vehicle_id = selected_vehicle,
@@ -961,16 +916,6 @@ def charge_account(request):
         return JsonResponse({'message': 'Customer profile not found.'}, status=404)
 
 
-
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from django.utils import timezone
-# import json
-
-# from .models import DiscountRequests, CustomerProfile  # Assuming CustomerProfile stores the discount field
-# from django.contrib.auth.models import User
-
-
 @csrf_exempt
 def request_discount(request):
     if not request.user.has_perm('users.request_discount') and not request.user.has_perm('users.rent_vehicle'):
@@ -1088,23 +1033,6 @@ def verify_discount_request(request):
         return JsonResponse({'message': 'Customer profile not found.'}, status=404)
 
 
-
-# import json
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from django.utils import timezone
-# from django.contrib.auth.decorators import permission_required
-# from .models import Coupon, PartnerProfile
-# from users.models import CustomerProfile  # Adjust import based on your structure
-
-
-# import json
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from django.contrib.auth.decorators import permission_required
-# from django.utils.decorators import method_decorator
-# from .models import PartnerProfile
-
 @csrf_exempt
 def add_partner(request):
     if not request.user.has_perm('users.add_partners') and not request.user.has_perm('users.move_vehicle'):
@@ -1136,7 +1064,6 @@ def add_partner(request):
 
     except (json.JSONDecodeError, KeyError):
         return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
-
 
 
 @csrf_exempt
