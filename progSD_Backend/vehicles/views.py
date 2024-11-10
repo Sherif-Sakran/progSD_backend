@@ -852,10 +852,10 @@ def pay_charges(request):
             return JsonResponse({'message': 'Your rental has not finished yet. '}, status=400)
 
         last_rental = models.Rental.objects.filter(customer=request.user, is_active=False).order_by('-end_time').first()
+        print(last_rental)
         if not last_rental:
             return JsonResponse({'message': 'No unpaid rentals found.'}, status=404)
         amount_due = last_rental.total_cost
-
         if payment_method == "Account":    
             if customer_profile.account_balance < amount_due:
                 return JsonResponse({'message': 'Insufficient account balance.'}, status=400)
@@ -1185,3 +1185,29 @@ def add_coupon(request):
         return JsonResponse({'message': 'Invalid JSON or missing parameters'}, status=400)
     except ValueError:
         return JsonResponse({'message': 'Invalid data types'}, status=400)
+
+
+@csrf_exempt
+def partners_list(request):
+    if not request.user.has_perm('partners.add_partners') and not request.user.has_perm('partners.move_vehicle'):
+        return JsonResponse({'message': 'Permission denied'}, status=403)
+
+    try:
+        partners = models.Partner.objects.all()
+
+        partner_data = partners.values('id', 'name', 'joined_date', 'category')
+
+        result = [
+            {
+                'id': entry['id'],
+                'name': entry['name'],
+                'joined_date': entry['joined_date'],
+                'category': entry['category'],
+            }
+            for entry in partner_data
+        ]
+
+        return JsonResponse(result, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=400)
