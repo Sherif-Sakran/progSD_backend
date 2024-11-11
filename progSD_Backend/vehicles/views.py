@@ -238,10 +238,11 @@ def rent_vehicle(request):
             return JsonResponse({'message': 'You cannot rent more than once at the same time'}, status=400)
 
         try:
+            print('received request')
             vehicle_id_JSON = json.loads(request.body)
+            print('received car id', vehicle_id_JSON["id"])
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
-        print('received car id', vehicle_id_JSON["id"])
         selected_vehicle = models.Vehicle.objects.filter(id=vehicle_id_JSON["id"])[0]
         
         User = get_user_model()
