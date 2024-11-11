@@ -72,28 +72,6 @@ class Rental(models.Model):
     def __str__(self):
         return f"Rental {self.id} by {self.customer}"
 
-
-
-# class MaintenanceLog(models.Model):
-#     ACTION_TAKEN_CHOICES = [
-#         ('Charged', 'Charged'),
-#         ('Repaired', 'Repaired'),
-#         ('Relocated', 'Relocated'),
-#         ('ReportReceived', 'ReportReceived'),
-#     ]
-
-#     id = models.AutoField(primary_key=True)
-#     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE)
-#     reported_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
-#     operator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='operator_maintenance_logs', null=True)
-#     maintenance_date = models.DateField()
-#     description = models.TextField()
-#     action_taken = models.CharField(max_length=20, choices=ACTION_TAKEN_CHOICES)
-
-#     def __str__(self):
-#         return f'Maintenance Log for {self.vehicle}'
-
-
 class CustomerReportedDefects(models.Model):
     id = models.AutoField(primary_key=True)
     vehicle = models.ForeignKey('Vehicle', on_delete=models.CASCADE)
@@ -122,25 +100,6 @@ class ChargesLog(models.Model):
     charge_up_to = models.IntegerField()
     original_battery_level = models.IntegerField()
     notes = models.TextField(blank=True, null=True)
-
-
-
-class Report(models.Model):
-    REPORT_TYPE_CHOICES = [
-        ('Usage Report', 'Usage Report'),
-        ('Revenue Report', 'Revenue Report'),
-    ]
-
-    id = models.AutoField(primary_key=True)
-    manager = models.ForeignKey(User, on_delete=models.CASCADE)
-    report_type = models.CharField(max_length=20, choices=REPORT_TYPE_CHOICES)
-    start_date = models.DateField()
-    end_date = models.DateField()
-    generated_on = models.DateTimeField(auto_now_add=True)
-    data = models.JSONField()
-
-    def __str__(self):
-        return f'Report {self.report_type} by {self.manager}'
 
 
 # for the extra functionality of student_discounts

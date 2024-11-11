@@ -501,7 +501,7 @@ def confirm_defective_vehicle(request):
         
         selected_vehicle.save()
         defect_report.save()
-        return JsonResponse({'message': 'Report confirmed successfully'})
+        return JsonResponse({'message': '    confirmed successfully'})
 
     return JsonResponse({'message': 'Invalid request method'}, status=405)
 
